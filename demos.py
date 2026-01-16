@@ -1320,9 +1320,15 @@ class DaemonController:
         with self.lock:
             if not self.running or self.skip_to_next or self.skip_to_prev:
                 return True
-            # Check pause
-            while self.paused and self.running:
-                time.sleep(0.1)
+
+        # Check pause (release lock while sleeping to allow resume command)
+        while True:
+            with self.lock:
+                if not self.paused or not self.running:
+                    break
+            time.sleep(0.1)
+
+        with self.lock:
             return not self.running
 
     def apply_brightness(self, r, g, b):
