@@ -1349,19 +1349,24 @@ class DaemonController:
                 # Determine which effects to play based on mode
                 with self.lock:
                     mode = self.playback_mode
+                    start_idx = self.effect_index
                     if mode == 'single':
                         # Single effect mode - only play the current effect
-                        effects_to_play = [(self.effect_index, self.effect_keys[self.effect_index])]
+                        effects_to_play = [(start_idx, self.effect_keys[start_idx])]
                     else:
-                        # Playlist mode - play all effects
-                        effects_to_play = list(enumerate(self.effect_keys))
+                        # Playlist mode - play all effects starting from current index
+                        # Create a rotated list starting from effect_index
+                        num_effects = len(self.effect_keys)
+                        effects_to_play = [
+                            ((start_idx + i) % num_effects, self.effect_keys[(start_idx + i) % num_effects])
+                            for i in range(num_effects)
+                        ]
 
                 for idx, key in effects_to_play:
                     with self.lock:
                         if not self.running:
                             break
-                        if mode == 'playlist':
-                            self.effect_index = idx
+                        self.effect_index = idx
                         self.current_effect = key
                         self.skip_to_next = False
                         self.skip_to_prev = False
@@ -1388,13 +1393,15 @@ class DaemonController:
                         if not self.running:
                             break
                         if self.skip_to_prev:
-                            # Go back two positions (one to undo current increment, one to go back)
+                            # Go back one position
                             self.effect_index = (idx - 1) % len(self.effect_keys)
                             self.playback_mode = 'playlist'  # Switch to playlist on manual navigation
-                            break  # Break out of for loop to restart with new playlist
+                            break  # Break out of for loop to restart with new position
                         if self.skip_to_next:
+                            # Advance to next position
+                            self.effect_index = (idx + 1) % len(self.effect_keys)
                             self.playback_mode = 'playlist'  # Switch to playlist on manual navigation
-                            break  # Break out of for loop to restart with new playlist
+                            break  # Break out of for loop to restart with new position
 
                     matrix.Clear()
                     time.sleep(self.args.pause)
