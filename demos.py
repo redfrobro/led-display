@@ -778,7 +778,7 @@ def tunnel_effect(duration=8, frequency=5, speed=1.0, rings=20, check_interrupt=
         # Draw concentric rings
         for ring in range(rings, 0, -1):
             z = (ring + offset) % rings
-            if z == 0:
+            if z < 0.1:
                 z = 0.1
 
             # Calculate ring radius based on depth
