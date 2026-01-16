@@ -1451,7 +1451,7 @@ class DaemonController:
                     freq = int(arg)
                     if 1 <= freq <= 10:
                         self.frequency = freq
-                        return {"status": "ok", "frequency": freq}
+                        return {"status": "ok", "frequency": freq, "message": f"Frequency set to {freq}"}
                     else:
                         return {"status": "error", "message": "Frequency must be 1-10"}
                 except ValueError:
@@ -1464,7 +1464,7 @@ class DaemonController:
                     bright = int(arg)
                     if 0 <= bright <= 100:
                         self.brightness = bright
-                        return {"status": "ok", "brightness": bright}
+                        return {"status": "ok", "brightness": bright, "message": f"Brightness set to {bright}%"}
                     else:
                         return {"status": "error", "message": "Brightness must be 0-100"}
                 except ValueError:
@@ -1477,7 +1477,7 @@ class DaemonController:
                     spd = float(arg)
                     if 0.1 <= spd <= 5.0:
                         self.speed = spd
-                        return {"status": "ok", "speed": spd}
+                        return {"status": "ok", "speed": spd, "message": f"Speed set to {spd}x"}
                     else:
                         return {"status": "error", "message": "Speed must be 0.1-5.0"}
                 except ValueError:

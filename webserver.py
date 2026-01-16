@@ -409,8 +409,8 @@ def get_effects():
     """Get list of available effects"""
     # Import effect lists from demos.py
     try:
-        from demos import ALL_EFFECTS
-        return jsonify({'effects': list(ALL_EFFECTS.keys())})
+        from demos import DEMOS
+        return jsonify({'effects': list(DEMOS.keys())})
     except:
         # Fallback list
         effects = ['plasma', 'fire', 'matrix', 'sparkle', 'meteor', 'spiral',
