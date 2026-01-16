@@ -1,0 +1,5 @@
+#!/bin/bash
+# Start LED Matrix daemon
+
+cd "$(dirname "$0")/.."
+exec sudo -E env PATH=$PATH python demos.py --daemon "$@"

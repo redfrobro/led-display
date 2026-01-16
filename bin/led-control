@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""LED Matrix Control - Wrapper script"""
+
+import sys
+import os
+
+# Add parent directory to path so we can import led_control
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from led_control import main
+
+if __name__ == "__main__":
+    sys.exit(main())
