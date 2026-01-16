@@ -29,6 +29,7 @@ Requires sudo for GPIO access. No build, lint, or test commands are configured.
 -f, --frequency 1-10    Spawn rate for particle effects (default: 5)
 --loops N               Number of loops (0 = infinite)
 --pause SECS            Pause between effects (default: 0.5)
+-v, --verbose           Enable verbose logging for troubleshooting
 ```
 
 ### Examples

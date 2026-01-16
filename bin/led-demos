@@ -1,0 +1,16 @@
+#!/bin/bash
+# LED Matrix Demo launcher
+# Activates virtualenv and runs demos.py with all provided arguments
+# Can be run from any directory or symlinked to ~/bin, /usr/local/bin, etc.
+
+# Resolve the actual script location (follows symlinks)
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+
+source ~/rgbmatrix/bin/activate
+sudo -E env PATH=$PATH python "$SCRIPT_DIR/demos.py" "$@"

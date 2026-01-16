@@ -3,7 +3,12 @@ import math
 import sys
 import os
 import argparse
+import logging
 from random import randrange, random, choice, shuffle
+
+# Setup logging (disabled by default)
+logger = logging.getLogger('led-demos')
+logger.addHandler(logging.NullHandler())
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
@@ -17,7 +22,9 @@ options.rows = ROWS
 options.cols = COLS
 options.parallel = 1
 
+logger.debug(f"Initializing matrix: {ROWS}x{COLS}, mapping={options.hardware_mapping}")
 matrix = RGBMatrix(options=options)
+logger.debug("Matrix initialized successfully")
 
 # Precomputed lookup tables for Pi Zero performance
 SIN_TABLE = [math.sin(i * math.pi / 128) for i in range(256)]
@@ -674,11 +681,29 @@ Effect-specific options (use --list-opts to see all):
                         metavar="1-10", help="Spawn frequency for effects like fireworks/lightning (1=rare, 10=frequent, default: 5)")
     parser.add_argument("--pause", type=float, default=0.5,
                         help="Pause between effects in seconds (default: 0.5)")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Enable verbose logging for troubleshooting")
     return parser.parse_args()
+
+
+def setup_logging(verbose):
+    """Configure logging based on verbose flag"""
+    if verbose:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s [%(levelname)s] %(message)s',
+            datefmt='%H:%M:%S'
+        ))
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        logger.info("Verbose logging enabled")
 
 
 if __name__ == "__main__":
     args = parse_args()
+    setup_logging(args.verbose)
+
+    logger.debug(f"Arguments: {vars(args)}")
 
     # List effects and exit
     if args.list:
@@ -701,6 +726,7 @@ if __name__ == "__main__":
     # Parse effect-specific options
     if args.opts:
         EFFECT_OPTIONS.update(parse_effect_opts(args.opts))
+        logger.debug(f"Custom effect options: {EFFECT_OPTIONS}")
 
     # Determine which effects to run
     if args.effects:
@@ -717,6 +743,10 @@ if __name__ == "__main__":
 
     if args.shuffle:
         shuffle(effect_keys)
+        logger.debug("Effect order shuffled")
+
+    logger.info(f"Running effects: {effect_keys}")
+    logger.info(f"Duration: {args.duration}s, Frequency: {args.frequency}, Pause: {args.pause}s")
 
     print("LED Matrix Demo - Press Ctrl+C to exit")
     print(f"Effects: {', '.join(effect_keys)}")
@@ -731,21 +761,30 @@ if __name__ == "__main__":
             for key in effect_keys:
                 name, func, _ = DEMOS[key]
                 opts = get_effect_options(key)
+                logger.debug(f"Starting effect '{key}' with options: {opts}")
                 print(f"Now showing: {name}")
 
+                start = time.time()
                 if args.duration == 0:
                     # Run forever (until Ctrl+C)
                     func(duration=999999, frequency=args.frequency, **opts)
                 else:
                     func(duration=args.duration, frequency=args.frequency, **opts)
 
+                elapsed = time.time() - start
+                logger.debug(f"Effect '{key}' finished after {elapsed:.2f}s")
+
                 matrix.Clear()
                 time.sleep(args.pause)
 
             loop_count += 1
+            logger.debug(f"Completed loop {loop_count}")
             if args.shuffle and (args.loops == 0 or loop_count < args.loops):
                 shuffle(effect_keys)
 
     except KeyboardInterrupt:
+        logger.info("Interrupted by user")
         print("\nExiting...")
         matrix.Clear()
+
+    logger.info("Demo finished")
