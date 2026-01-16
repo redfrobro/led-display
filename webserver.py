@@ -387,10 +387,14 @@ def get_status():
     try:
         response = send_command('status')
         if response and response.get('status') == 'ok':
+            # Get effect name, fallback to key if name not available
+            effect_name = response.get('effect_name') or response.get('effect', 'Unknown')
+            state = 'PAUSED' if response.get('paused', False) else 'RUNNING'
+
             return jsonify({
                 'status': 'online',
-                'effect': response.get('current_effect', 'Unknown'),
-                'state': response.get('state', 'Unknown'),
+                'effect': effect_name,
+                'state': state,
                 'brightness': response.get('brightness', 100),
                 'speed': response.get('speed', 1.0),
                 'frequency': response.get('frequency', 5)

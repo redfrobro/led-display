@@ -12,5 +12,5 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 
-source ~/rgbmatrix/bin/activate
-sudo -E env PATH=$PATH python "$SCRIPT_DIR/demos.py" "$@"
+cd "$SCRIPT_DIR"
+exec sudo -E env PATH=$PATH python demos.py "$@"
