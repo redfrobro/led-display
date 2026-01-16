@@ -1305,6 +1305,9 @@ class DaemonController:
         self.speed = 1.0  # 0.1-5.0
         self.effect_options = EFFECT_OPTIONS.copy()
 
+        # Playback mode: 'playlist' or 'single'
+        self.playback_mode = 'playlist'  # Default to playlist mode
+
         # Web server options
         self.webserver_enabled = webserver_enabled
         self.webserver_port = webserver_port
@@ -1343,11 +1346,22 @@ class DaemonController:
 
         try:
             while self.running and (self.args.loops == 0 or loop_count < self.args.loops):
-                for idx, key in enumerate(self.effect_keys):
+                # Determine which effects to play based on mode
+                with self.lock:
+                    mode = self.playback_mode
+                    if mode == 'single':
+                        # Single effect mode - only play the current effect
+                        effects_to_play = [(self.effect_index, self.effect_keys[self.effect_index])]
+                    else:
+                        # Playlist mode - play all effects
+                        effects_to_play = list(enumerate(self.effect_keys))
+
+                for idx, key in effects_to_play:
                     with self.lock:
                         if not self.running:
                             break
-                        self.effect_index = idx
+                        if mode == 'playlist':
+                            self.effect_index = idx
                         self.current_effect = key
                         self.skip_to_next = False
                         self.skip_to_prev = False
@@ -1376,10 +1390,17 @@ class DaemonController:
                         if self.skip_to_prev:
                             # Go back two positions (one to undo current increment, one to go back)
                             self.effect_index = (idx - 1) % len(self.effect_keys)
-                            continue
+                            self.playback_mode = 'playlist'  # Switch to playlist on manual navigation
+                            break  # Break out of for loop to restart with new playlist
+                        if self.skip_to_next:
+                            self.playback_mode = 'playlist'  # Switch to playlist on manual navigation
+                            break  # Break out of for loop to restart with new playlist
 
                     matrix.Clear()
                     time.sleep(self.args.pause)
+
+                    # In single mode, loop restarts automatically (outer while loop)
+                    # In playlist mode, continue to next effect
 
                 loop_count += 1
 
@@ -1411,7 +1432,8 @@ class DaemonController:
                     "uptime": uptime,
                     "frequency": self.frequency,
                     "brightness": self.brightness,
-                    "speed": self.speed
+                    "speed": self.speed,
+                    "playback_mode": self.playback_mode
                 }
 
             elif command == "next":
@@ -1437,10 +1459,15 @@ class DaemonController:
                 if arg in self.effect_keys:
                     target_idx = self.effect_keys.index(arg)
                     self.effect_index = target_idx
+                    self.playback_mode = 'single'  # Switch to single effect mode
                     self.skip_to_next = True
-                    return {"status": "ok", "message": f"Switching to {arg}"}
+                    return {"status": "ok", "message": f"Locked on {arg}"}
                 else:
                     return {"status": "error", "message": f"Effect {arg} not in current playlist"}
+
+            elif command == "playlist":
+                self.playback_mode = 'playlist'
+                return {"status": "ok", "message": "Playlist mode enabled"}
 
             elif command == "stop":
                 self.running = False

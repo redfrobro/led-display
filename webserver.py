@@ -202,6 +202,10 @@ HTML_TEMPLATE = """
                 <span class="status-label">Frequency:</span>
                 <span class="status-value" id="frequency-display">-</span>
             </div>
+            <div class="status-item">
+                <span class="status-label">Mode:</span>
+                <span class="status-value" id="mode-display">-</span>
+            </div>
         </div>
 
         <div class="control-section">
@@ -216,6 +220,10 @@ HTML_TEMPLATE = """
             <select id="effect-select" class="effect-selector" onchange="selectEffect()">
                 <option value="">Select Effect...</option>
             </select>
+
+            <div class="button-grid" style="margin-top: 15px;">
+                <button onclick="sendCommand('playlist')">🎵 Playlist Mode</button>
+            </div>
         </div>
 
         <div class="control-section">
@@ -281,6 +289,10 @@ HTML_TEMPLATE = """
                         document.getElementById('brightness-display').textContent = data.brightness || '-';
                         document.getElementById('speed-display').textContent = data.speed || '-';
                         document.getElementById('frequency-display').textContent = data.frequency || '-';
+
+                        // Display mode (capitalize first letter)
+                        const mode = data.mode || 'playlist';
+                        document.getElementById('mode-display').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
                     }
                 })
                 .catch(err => {
@@ -397,7 +409,8 @@ def get_status():
                 'state': state,
                 'brightness': response.get('brightness', 100),
                 'speed': response.get('speed', 1.0),
-                'frequency': response.get('frequency', 5)
+                'frequency': response.get('frequency', 5),
+                'mode': response.get('playback_mode', 'playlist')
             })
     except Exception as e:
         pass
