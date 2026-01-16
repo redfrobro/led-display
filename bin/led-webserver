@@ -1,0 +1,5 @@
+#!/bin/bash
+# Start LED Matrix daemon with web server
+
+cd "$(dirname "$0")/.."
+exec sudo -E env PATH=$PATH python demos.py --daemon --webserver "$@"

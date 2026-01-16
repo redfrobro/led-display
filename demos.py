@@ -1287,7 +1287,7 @@ def parse_effect_opts(opts_string):
 class DaemonController:
     """Controls daemon mode with threading and Unix socket IPC"""
 
-    def __init__(self, socket_path, args, effect_keys):
+    def __init__(self, socket_path, args, effect_keys, webserver_enabled=False, webserver_port=80):
         self.socket_path = socket_path
         self.args = args
         self.effect_keys = effect_keys
@@ -1305,9 +1305,14 @@ class DaemonController:
         self.speed = 1.0  # 0.1-5.0
         self.effect_options = EFFECT_OPTIONS.copy()
 
+        # Web server options
+        self.webserver_enabled = webserver_enabled
+        self.webserver_port = webserver_port
+
         # Threading
         self.effect_thread = None
         self.ipc_thread = None
+        self.webserver_thread = None
         self.lock = threading.Lock()
 
     def should_interrupt(self):
@@ -1546,6 +1551,32 @@ class DaemonController:
                 pass
             logger.info("IPC worker exiting")
 
+    def webserver_worker(self):
+        """Run Flask web server"""
+        logger.info(f"Web server starting on port {self.webserver_port}")
+
+        try:
+            import webserver
+            # Disable Flask's default logging to avoid duplicate messages
+            import logging as flask_logging
+            flask_log = flask_logging.getLogger('werkzeug')
+            flask_log.setLevel(flask_logging.ERROR)
+
+            # Run Flask web server
+            webserver.app.run(
+                host='0.0.0.0',
+                port=self.webserver_port,
+                debug=False,
+                use_reloader=False,
+                threaded=True
+            )
+        except ImportError:
+            logger.error("Flask not installed. Install with: pip install flask")
+        except Exception as e:
+            logger.error(f"Web server error: {e}", exc_info=True)
+        finally:
+            logger.info("Web server exiting")
+
     def start(self, fork=True):
         """Start daemon threads"""
         pid_file = "/tmp/led-matrix.pid"
@@ -1599,18 +1630,28 @@ class DaemonController:
         self.effect_thread.start()
         self.ipc_thread.start()
 
-        logger.info("Daemon started")
+        # Start web server if enabled
+        if self.webserver_enabled:
+            self.webserver_thread = threading.Thread(target=self.webserver_worker, daemon=False)
+            self.webserver_thread.start()
+            logger.info(f"Daemon started with web server on port {self.webserver_port}")
+        else:
+            logger.info("Daemon started")
 
     def wait(self):
         """Wait for threads to finish"""
         try:
             self.effect_thread.join()
             self.ipc_thread.join()
+            if self.webserver_thread:
+                self.webserver_thread.join()
         except KeyboardInterrupt:
             logger.info("Interrupted, shutting down...")
             self.running = False
             self.effect_thread.join(timeout=2)
             self.ipc_thread.join(timeout=2)
+            if self.webserver_thread:
+                self.webserver_thread.join(timeout=2)
         finally:
             # Clean up PID file
             pid_file = "/tmp/led-matrix.pid"
@@ -1685,6 +1726,10 @@ Effect-specific options (use --list-opts to see all):
                         help="Run as a daemon with IPC control socket")
     parser.add_argument("--socket", type=str, default="/tmp/led-matrix.sock",
                         help="Unix socket path for daemon mode (default: /tmp/led-matrix.sock)")
+    parser.add_argument("--webserver", action="store_true",
+                        help="Run web server for browser-based control (requires Flask)")
+    parser.add_argument("--port", type=int, default=80,
+                        help="Port for web server (default: 80, requires sudo)")
     return parser.parse_args()
 
 
@@ -1754,6 +1799,25 @@ if __name__ == "__main__":
     logger.info(f"Running effects: {effect_keys}")
     logger.info(f"Duration: {args.duration}s, Frequency: {args.frequency}, Pause: {args.pause}s")
 
+    # Web server mode (standalone, without daemon)
+    if args.webserver and not args.daemon:
+        print("LED Matrix Web Server (Standalone Mode)")
+        print(f"Port: {args.port}")
+        print("Open your browser to control the LED matrix")
+        print(f"Make sure daemon is running: sudo python demos.py --daemon")
+        print()
+
+        try:
+            import webserver
+            webserver.app.run(host='0.0.0.0', port=args.port, debug=False)
+        except ImportError:
+            print("Error: Flask not installed. Install with: pip install flask")
+            sys.exit(1)
+        except PermissionError:
+            print(f"Error: Permission denied. Port {args.port} requires sudo.")
+            sys.exit(1)
+        sys.exit(0)
+
     # Initialize matrix for normal mode (daemon mode initializes after fork)
     if not args.daemon:
         logger.debug(f"Initializing matrix: {ROWS}x{COLS}, mapping={options.hardware_mapping}")
@@ -1767,13 +1831,21 @@ if __name__ == "__main__":
         print(f"PID file: /tmp/led-matrix.pid")
         print(f"Log file: /tmp/led-matrix.log")
         print(f"Effects: {', '.join(effect_keys)}")
+        if args.webserver:
+            print(f"Web server: http://0.0.0.0:{args.port}")
         print()
 
         # Enable logging for daemon mode
         if not args.verbose:
             setup_logging(True)
 
-        daemon = DaemonController(args.socket, args, effect_keys)
+        daemon = DaemonController(
+            args.socket,
+            args,
+            effect_keys,
+            webserver_enabled=args.webserver,
+            webserver_port=args.port
+        )
         daemon.start(fork=True)  # This will fork and parent exits, returning to shell
         # Code below only runs in child process
         daemon.wait()

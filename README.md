@@ -12,6 +12,7 @@ A Python project for controlling a 32x64 RGB LED matrix display using an Adafrui
   - [Normal Mode](#normal-mode)
   - [Power Modes](#power-modes)
   - [Daemon Mode](#daemon-mode)
+  - [Web Server Mode](#web-server-mode)
 - [Effects](#effects)
   - [Low Power Effects](#low-power-effects-pi-zero-compatible)
   - [High Power Effects](#high-power-effects-pi-34-recommended)
@@ -32,6 +33,7 @@ A Python project for controlling a 32x64 RGB LED matrix display using an Adafrui
 - Python 3.7+
 - [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) - Adafruit RGB LED Matrix library
 - Pillow (PIL) - Image processing (optional, for image display)
+- Flask - Web server interface (optional, for web control)
 
 ## Installation
 
@@ -53,11 +55,14 @@ A Python project for controlling a 32x64 RGB LED matrix display using an Adafrui
 3. **Install Python dependencies:**
    ```bash
    pip install Pillow
+
+   # Optional: Install Flask for web server mode
+   pip install flask
    ```
 
 4. **Make scripts executable:**
    ```bash
-   chmod +x bin/led-daemon bin/led-control
+   chmod +x bin/led-daemon bin/led-control bin/led-webserver
    ```
 
 ## Quick Start
@@ -82,6 +87,10 @@ sudo python demos.py --daemon
 bin/led-control status
 bin/led-control next
 bin/led-control set plasma
+
+# Start daemon with web interface
+bin/led-webserver
+# Then open http://your-pi-ip:80 in a browser
 ```
 
 ## Usage
@@ -193,6 +202,51 @@ bin/led-control kill             # Force stop (SIGTERM)
 | `/tmp/led-matrix.pid` | Process ID file |
 | `/tmp/led-matrix.log` | Daemon log file |
 
+### Web Server Mode
+
+Control the LED matrix through a web browser interface. The web server runs as part of the daemon and provides a modern, responsive interface accessible from any device on your network.
+
+**Requirements:**
+- Flask: `pip install flask`
+
+**Starting the daemon with web server:**
+```bash
+# Start daemon with web server (default port 80)
+sudo python demos.py --daemon --webserver
+
+# Or use the convenience script
+bin/led-webserver
+
+# Use a different port (no sudo needed for ports >= 1024)
+sudo python demos.py --daemon --webserver --port 8080
+
+# Combine with other daemon options
+sudo python demos.py --daemon --webserver --low-power
+sudo python demos.py --daemon --webserver -e fireworks,matrix,aurora
+```
+
+**Standalone web server (if daemon already running separately):**
+```bash
+# Start only the web interface (daemon must be running)
+sudo python demos.py --webserver
+```
+
+**Accessing the web interface:**
+```
+http://your-pi-ip-address:80
+```
+
+**Features:**
+- **Real-time status display** - Current effect, state, brightness, speed, frequency
+- **Effect controls** - Next, previous, pause, resume buttons
+- **Effect selector** - Dropdown to jump to any effect
+- **Interactive sliders** - Adjust brightness (0-100), speed (0.1-5.0), frequency (1-10)
+- **Daemon control** - Stop the daemon
+- **Auto-refresh** - Status updates every 2 seconds
+- **Responsive design** - Works on desktop and mobile browsers
+
+The web interface is designed with a dark theme optimized for controlling LED displays.
+
 ## Effects
 
 ### Low Power Effects (Pi Zero Compatible)
@@ -255,6 +309,8 @@ Options:
   -v, --verbose           Enable verbose logging
   --daemon                Run as daemon with IPC control socket
   --socket PATH           Unix socket path (default: /tmp/led-matrix.sock)
+  --webserver             Run web server for browser-based control (requires Flask)
+  --port PORT             Port for web server (default: 80, requires sudo)
 ```
 
 ## Daemon Control Commands

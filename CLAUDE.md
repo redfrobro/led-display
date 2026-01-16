@@ -63,6 +63,32 @@ bin/led-control kill                # Force-stop daemon (SIGTERM)
 
 The daemon mode supports all regular command-line options (`--effects`, `--night`, `--duration`, `--low-power`, etc.) and can be controlled in real-time via the `led-control` client.
 
+### Web Server Mode
+
+Control the LED matrix through a browser interface. Requires Flask (`pip install flask`). The web server runs as part of the daemon.
+
+```bash
+# Start daemon with web server
+sudo python demos.py --daemon --webserver
+# Or use the convenience script
+bin/led-webserver
+
+# Use custom port
+sudo python demos.py --daemon --webserver --port 8080
+
+# Access the web interface
+# Open browser to: http://raspberry-pi-ip:80
+```
+
+The web interface provides:
+- Real-time status display (current effect, brightness, speed, frequency)
+- Effect control buttons (next, previous, pause, resume)
+- Effect selector dropdown
+- Interactive sliders for brightness, speed, and frequency
+- Daemon control (stop)
+
+**Note:** The `bin/led-webserver` script starts the daemon with the web server enabled. You can also run `--webserver` standalone (without `--daemon`) to start only the web interface if a daemon is already running separately.
+
 ## demos.py Command-Line Options
 
 ```
@@ -79,6 +105,8 @@ The daemon mode supports all regular command-line options (`--effects`, `--night
 -v, --verbose           Enable verbose logging for troubleshooting
 --daemon                Run as daemon with IPC control socket
 --socket PATH           Unix socket path (default: /tmp/led-matrix.sock)
+--webserver             Run web server for browser-based control (requires Flask)
+--port PORT             Port for web server (default: 80, requires sudo)
 ```
 
 ### Examples

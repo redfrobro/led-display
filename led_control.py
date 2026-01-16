@@ -25,9 +25,17 @@ def is_daemon_running():
             pid = int(f.read().strip())
 
         # Check if process is running
-        os.kill(pid, 0)  # Signal 0 doesn't kill, just checks if process exists
-        return True
-    except (OSError, ValueError, ProcessLookupError):
+        try:
+            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks if process exists
+            return True
+        except PermissionError:
+            # Process exists but we don't have permission to signal it (daemon running as root)
+            # Fall back to checking if socket exists and is connectable
+            return os.path.exists(SOCKET_PATH)
+        except ProcessLookupError:
+            # Process doesn't exist
+            return False
+    except (OSError, ValueError):
         return False
 
 
