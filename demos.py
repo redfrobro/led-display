@@ -1479,6 +1479,7 @@ class DaemonController:
 
             elif command == "playlist":
                 self.playback_mode = 'playlist'
+                self.skip_to_next = True  # Interrupt current effect to restart in playlist mode
                 return {"status": "ok", "message": "Playlist mode enabled"}
 
             elif command == "stop":
