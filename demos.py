@@ -1297,6 +1297,7 @@ class DaemonController:
         self.effect_index = 0
         self.skip_to_next = False
         self.skip_to_prev = False
+        self.jump_to_effect = False  # For set command - jump without incrementing
         self.start_time = time.time()
 
         # Adjustable parameters
@@ -1321,7 +1322,7 @@ class DaemonController:
     def should_interrupt(self):
         """Called by effect functions to check for commands"""
         with self.lock:
-            if not self.running or self.skip_to_next or self.skip_to_prev:
+            if not self.running or self.skip_to_next or self.skip_to_prev or self.jump_to_effect:
                 return True
 
         # Check pause (release lock while sleeping to allow resume command)
@@ -1370,6 +1371,7 @@ class DaemonController:
                         self.current_effect = key
                         self.skip_to_next = False
                         self.skip_to_prev = False
+                        self.jump_to_effect = False
 
                     name, func, _ = DEMOS[key]
                     opts = get_effect_options(key)
@@ -1392,6 +1394,9 @@ class DaemonController:
                     with self.lock:
                         if not self.running:
                             break
+                        if self.jump_to_effect:
+                            # Jump to specific effect - index already set, just break
+                            break  # Break out of for loop to restart at new position
                         if self.skip_to_prev:
                             # Go back one position
                             self.effect_index = (idx - 1) % len(self.effect_keys)
@@ -1467,7 +1472,7 @@ class DaemonController:
                     target_idx = self.effect_keys.index(arg)
                     self.effect_index = target_idx
                     self.playback_mode = 'single'  # Switch to single effect mode
-                    self.skip_to_next = True
+                    self.jump_to_effect = True  # Jump to exact effect without incrementing
                     return {"status": "ok", "message": f"Locked on {arg}"}
                 else:
                     return {"status": "error", "message": f"Effect {arg} not in current playlist"}
