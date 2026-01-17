@@ -43,11 +43,35 @@ def send_command(cmd):
     """Send command to daemon and return response"""
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(SOCKET_PATH)
-        sock.sendall((cmd + "\n").encode('utf-8'))
-        response = sock.recv(4096).decode('utf-8').strip()
-        sock.close()
-        return json.loads(response)
+        try:
+            sock.connect(SOCKET_PATH)
+            sock.sendall((cmd + "\n").encode('utf-8'))
+            sock.settimeout(2.0)  # Timeout for reading response
+
+            # Read response until newline (daemon sends JSON lines)
+            response_data = b""
+            max_response_size = 65536  # 64KB maximum response size
+            while True:
+                try:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    response_data += chunk
+                    if len(response_data) > max_response_size:
+                        raise ValueError("Response too large")
+                    if b'\n' in response_data:
+                        # Extract up to newline
+                        response_data = response_data.split(b'\n')[0]
+                        break
+                except socket.timeout:
+                    break
+
+            if not response_data:
+                return {"status": "error", "message": "No response from daemon (timeout or empty)"}
+            response = response_data.decode('utf-8', errors='ignore').strip()
+            return json.loads(response)
+        finally:
+            sock.close()
     except FileNotFoundError:
         return {"status": "error", "message": f"Cannot connect to daemon socket: {SOCKET_PATH}. Start it with: bin/led-daemon"}
     except ConnectionRefusedError:

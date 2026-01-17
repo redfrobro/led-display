@@ -536,12 +536,45 @@ HTML_TEMPLATE = """
                                 <button id="${option.key}-toggle" onclick="toggleEffectOption('${option.key}')"
                                         style="width: 100%;">${option.default ? 'On' : 'Off'}</button>
                             `;
+                        } else if (option.type === 'enum') {
+                            // Dropdown for enum types (e.g., font selection)
+                            optDiv.innerHTML = `
+                                <div class="slider-label">
+                                    <span>${option.description}</span>
+                                </div>
+                                <select id="${option.key}" class="effect-selector" onchange="setEnumEffectOption('${option.key}')">
+                                    <option value="">Loading...</option>
+                                </select>
+                            `;
+                            // Populate dropdown based on the key
+                            if (option.key === 'font_name') {
+                                fetch('/api/fonts')
+                                    .then(response => response.json())
+                                    .then(fontData => {
+                                        const select = document.getElementById(option.key);
+                                        select.innerHTML = '';
+                                        fontData.fonts.forEach(font => {
+                                            const opt = document.createElement('option');
+                                            opt.value = font;
+                                            opt.textContent = font;
+                                            if (font === option.default) {
+                                                opt.selected = true;
+                                            }
+                                            select.appendChild(opt);
+                                        });
+                                    })
+                                    .catch(err => {
+                                        console.error('Failed to load fonts:', err);
+                                        const select = document.getElementById(option.key);
+                                        select.innerHTML = '<option value="6x10.bdf">6x10.bdf</option>';
+                                    });
+                            }
                         } else if (option.type === 'number') {
                             // Determine appropriate min/max based on default value
                             let min = 0;
                             let max = 100;
                             let step = 1;
-                            
+
                             if (typeof option.default === 'number') {
                                 if (option.default <= 1) {
                                     min = 0;
@@ -557,7 +590,7 @@ HTML_TEMPLATE = """
                                     min = 0;
                                     max = Math.max(500, option.default * 2);
                                 }
-                                
+
                                 // Special handling for known option ranges
                                 if (option.key === 'intensity' || option.key === 'cooling') {
                                     min = 1;
@@ -577,6 +610,11 @@ HTML_TEMPLATE = """
                                     min = 0.01;
                                     max = 0.5;
                                     step = 0.01;
+                                } else if (option.key === 'color_hue') {
+                                    // Color hue uses full 0-360 range
+                                    min = 0;
+                                    max = 360;
+                                    step = 1;
                                 }
                             }
 
@@ -595,9 +633,16 @@ HTML_TEMPLATE = """
                                 <div class="slider-label">
                                     <span>${option.description}</span>
                                 </div>
-                                <input type="text" id="${option.key}" value="${option.default}"
-                                       style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #00ff88; background: #1a1a1a; color: #e0e0e0;"
-                                       onchange="setTextEffectOption('${option.key}')">
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="${option.key}" value="${option.default}"
+                                           style="flex: 1; padding: 10px; border-radius: 5px; border: 2px solid #00ff88; background: #1a1a1a; color: #e0e0e0; font-size: 14px;"
+                                           placeholder="Enter text to display"
+                                           onkeypress="if(event.key==='Enter') setTextEffectOption('${option.key}')">
+                                    <button onclick="setTextEffectOption('${option.key}')"
+                                            style="padding: 10px 20px; min-width: 100px;">
+                                        💾 Save
+                                    </button>
+                                </div>
                             `;
                         }
                         container.appendChild(optDiv);
@@ -623,6 +668,24 @@ HTML_TEMPLATE = """
         function setTextEffectOption(key) {
             if (isUpdatingFromStatus) return;
             const value = document.getElementById(key).value;
+            if (!value.trim()) {
+                showMessage('Please enter some text', 'error');
+                return;
+            }
+            // Show immediate feedback
+            showMessage('Saving text...', 'success');
+            sendCommand('opt', `${key}=${value}`);
+        }
+
+        function setEnumEffectOption(key) {
+            if (isUpdatingFromStatus) return;
+            const value = document.getElementById(key).value;
+            if (!value) {
+                showMessage('Please select a value', 'error');
+                return;
+            }
+            // Show immediate feedback
+            showMessage(`Updating ${key}...`, 'success');
             sendCommand('opt', `${key}=${value}`);
         }
 
@@ -712,20 +775,46 @@ def get_effects():
                    'aurora', 'spectrum', 'swirl', 'ripple']
         return jsonify({'effects': effects})
 
+@app.route('/api/fonts')
+def get_fonts():
+    """Get list of available font files"""
+    try:
+        fonts_dir = os.path.join(os.path.dirname(__file__), 'fonts')
+        if os.path.exists(fonts_dir):
+            font_files = [f for f in os.listdir(fonts_dir) if f.endswith('.bdf')]
+            font_files.sort()
+            return jsonify({'fonts': font_files})
+    except Exception as e:
+        print(f"Error getting fonts: {e}")
+    return jsonify({'fonts': ['6x10.bdf']})  # Fallback to default
+
 @app.route('/api/effect/<effect_key>/options')
 def get_effect_options(effect_key):
     """Get customizable options for a specific effect"""
     try:
-        from demos import DEMOS
+        from demos import DEMOS, load_text_effect_config
         if effect_key in DEMOS:
             _, _, options = DEMOS[effect_key]
             # Convert options dict to a list with metadata
             options_list = []
+
+            # Load current text effect config if this is the text effect
+            text_config = {}
+            if effect_key == 'text':
+                text_config = load_text_effect_config()
+
             for key, (default, description) in options.items():
+                # Special handling for text effect - load current values from config
+                if effect_key == 'text' and key in text_config:
+                    default = text_config[key]
+
                 if isinstance(default, bool):
                     option_type = 'boolean'
                 elif isinstance(default, (int, float)):
                     option_type = 'number'
+                elif key == 'font_name':
+                    # Special handling for font_name - use enum type
+                    option_type = 'enum'
                 else:
                     option_type = 'text'
                 options_list.append({

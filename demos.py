@@ -150,6 +150,8 @@ def fire_effect(duration=8, frequency=5, intensity=4, cooling=3, check_interrupt
 
 def matrix_rain(duration=8, frequency=5, speed=1.0, length=10, check_interrupt=None, **kwargs):
     """The Matrix digital rain effect"""
+    # Ensure length is valid
+    length = max(1, int(length))
     drops = []
     # frequency 1=sparse(6), 5=default(3), 10=dense(1)
     init_rate = max(1, 7 - frequency)
@@ -230,6 +232,8 @@ def sparkle_twinkle(duration=8, frequency=5, saturation=0.3, check_interrupt=Non
 
 def meteor_shower(duration=8, frequency=5, length=12, speed=1.0, check_interrupt=None, **kwargs):
     """Diagonal meteors with glowing trails"""
+    # Ensure length is valid
+    length = max(1, int(length))
     meteors = []
     # frequency 1=rare(16), 5=default(8), 10=frequent(2)
     spawn_rate = max(2, 18 - (frequency * 1.6))
@@ -293,6 +297,9 @@ def spiral_effect(duration=8, frequency=5, speed=5, density=10, check_interrupt=
 
 def bouncing_balls(duration=8, frequency=5, count=5, size=1, trail=10, check_interrupt=None, **kwargs):
     """Multiple bouncing balls with trails"""
+    # Ensure parameters are valid
+    count = max(1, int(count))
+    size = max(0, int(size))
     balls = []
     colors = [(255, 50, 50), (50, 255, 50), (50, 50, 255), (255, 255, 50), (255, 50, 255), (50, 255, 255)]
 
@@ -450,6 +457,8 @@ def fireworks(duration=8, frequency=5, particles=30, gravity=0.1, check_interrup
 
 def starfield(duration=8, frequency=5, count=100, speed=0.02, check_interrupt=None, **kwargs):
     """3D starfield flying through space"""
+    # Ensure count is valid
+    count = max(1, int(count))
     stars = []
     for _ in range(count):
         stars.append({
@@ -490,6 +499,8 @@ def starfield(duration=8, frequency=5, count=100, speed=0.02, check_interrupt=No
 
 def rising_bubbles(duration=8, frequency=5, size=2, wobble=2, check_interrupt=None, **kwargs):
     """Colorful bubbles rising up"""
+    # Ensure size is valid
+    size = max(0, int(size))
     bubbles = []
     # frequency 1=rare(10), 5=default(4), 10=frequent(1)
     spawn_rate = max(1, 11 - frequency)
@@ -585,6 +596,8 @@ def comet(duration=8, frequency=5, trail=25, speed=0.15, check_interrupt=None, *
 
 def ocean_waves(duration=8, frequency=5, wave_count=3, speed=1.0, check_interrupt=None, **kwargs):
     """Realistic ocean waves with foam effect"""
+    # Ensure wave_count is valid to prevent division by zero
+    wave_count = max(1, int(wave_count))
     start_time = time.time()
     t = 0
     foam = [[0] * COLS for _ in range(ROWS)]
@@ -786,6 +799,8 @@ def game_of_life(duration=8, frequency=5, density=30, colorful=True, check_inter
 
 def tunnel_effect(duration=8, frequency=5, speed=1.0, rings=20, check_interrupt=None, **kwargs):
     """3D tunnel flying effect"""
+    # Ensure rings is valid to prevent division by zero
+    rings = max(1, int(rings))
     start_time = time.time()
     offset = 0
     hue_offset = 0
@@ -830,6 +845,8 @@ def tunnel_effect(duration=8, frequency=5, speed=1.0, rings=20, check_interrupt=
 
 def pulse_rings(duration=8, frequency=5, sources=3, speed=1.0, check_interrupt=None, **kwargs):
     """Pulsing rings emanating from multiple points"""
+    # Ensure sources is valid
+    sources = max(1, int(sources))
     pulses = []
     # Generate source points
     source_points = [(randrange(10, COLS-10), randrange(5, ROWS-5), randrange(360))
@@ -979,6 +996,9 @@ def aurora(duration=8, frequency=5, bands=5, speed=1.0, check_interrupt=None, **
 
 def spectrum_analyzer(duration=8, frequency=5, bars=16, reactive=True, check_interrupt=None, **kwargs):
     """Audio visualizer style spectrum bars (simulated)"""
+    # Ensure bars is valid to prevent division by zero
+    bars = max(1, int(bars))
+    bars = min(bars, COLS)  # Cannot have more bars than columns
     bar_width = COLS // bars
     heights = [0] * bars
     targets = [0] * bars
@@ -1050,6 +1070,9 @@ def spectrum_analyzer(duration=8, frequency=5, bars=16, reactive=True, check_int
 
 def swirl_vortex(duration=8, frequency=5, vortices=2, speed=1.0, check_interrupt=None, **kwargs):
     """Multiple rotating swirl vortices"""
+    # Ensure vortices is valid to prevent division by zero
+    vortices = max(1, int(vortices))
+    vortices = min(vortices, 10)  # Reasonable upper limit for performance
     start_time = time.time()
     t = 0
 
@@ -1172,28 +1195,93 @@ def load_text_config():
 def save_text_config(text):
     """Save custom text to config file"""
     try:
+        # Load existing config to preserve other settings
+        config = {}
+        if os.path.exists(TEXT_CONFIG_FILE):
+            try:
+                with open(TEXT_CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+            except:
+                pass
+
+        # Update text
+        config['text'] = text
+
+        # Save config
         with open(TEXT_CONFIG_FILE, 'w') as f:
-            json.dump({'text': text}, f)
+            json.dump(config, f)
         logger.info(f"Saved text config: {text}")
     except Exception as e:
         logger.error(f"Failed to save text config: {e}")
 
-def text_display(duration=8, frequency=5, text=None, font_name='6x10.bdf',
-                 scroll_speed=2.0, color_hue=200, check_interrupt=None, **kwargs):
+def load_text_effect_config():
+    """Load all text effect configuration from config file"""
+    defaults = {
+        'text': 'Hello World',
+        'font_name': '6x10.bdf',
+        'color_hue': 200,
+        'scroll_speed': 2.0
+    }
+    if os.path.exists(TEXT_CONFIG_FILE):
+        try:
+            with open(TEXT_CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                # Merge with defaults
+                return {**defaults, **config}
+        except Exception as e:
+            logger.warning(f"Failed to load text effect config: {e}")
+    return defaults
+
+def save_text_effect_option(key, value):
+    """Save a text effect option to config file"""
+    try:
+        # Load existing config
+        config = {}
+        if os.path.exists(TEXT_CONFIG_FILE):
+            try:
+                with open(TEXT_CONFIG_FILE, 'r') as f:
+                    config = json.load(f)
+            except:
+                pass
+
+        # Update specific option
+        config[key] = value
+
+        # Save config
+        with open(TEXT_CONFIG_FILE, 'w') as f:
+            json.dump(config, f)
+        logger.info(f"Saved text effect option: {key}={value}")
+    except Exception as e:
+        logger.error(f"Failed to save text effect option: {e}")
+
+def text_display(duration=8, frequency=5, text=None, font_name=None,
+                 scroll_speed=None, color_hue=None, check_interrupt=None, **kwargs):
     """Display scrolling or static text on the matrix
 
     Args:
         text: Text to display (if None, loads from config file)
-        font_name: BDF font file from fonts/ folder
-        scroll_speed: Pixels per second for scrolling (0 = static centered)
-        color_hue: Color hue 0-360 for text
+        font_name: BDF font file from fonts/ folder (if None, loads from config)
+        scroll_speed: Pixels per second for scrolling (0 = static centered, if None loads from config)
+        color_hue: Color hue 0-360 for text (if None, loads from config)
     """
-    # Load text from config if not provided
+    # Load all config
+    config = load_text_effect_config()
+
+    # Use provided values or fall back to config
     if text is None:
-        text = load_text_config()
+        text = config['text']
     else:
         # Save new text to config for persistence
         save_text_config(text)
+
+    if font_name is None:
+        font_name = config['font_name']
+
+    if scroll_speed is None:
+        scroll_speed = config['scroll_speed']
+
+    if color_hue is None:
+        color_hue = config['color_hue']
 
     # Load font from fonts folder
     font_path = os.path.join(os.path.dirname(__file__), 'fonts', font_name)
@@ -1390,6 +1478,35 @@ DEFAULT_ORDER = LOW_POWER_ORDER + HIGH_POWER_ORDER
 NIGHT_MODE = ["matrix", "sparkle", "balls", "lightning", "fireworks", "starfield", "aurora", "ripple"]
 
 
+def validate_effect_option(effect_name, key, value):
+    """Validate effect option value to prevent crashes"""
+    # Skip validation for non-numeric values
+    if not isinstance(value, (int, float)):
+        return True
+
+    # Critical parameters that must be positive non-zero
+    if key in ['rings', 'bars', 'vortices', 'sources', 'count', 'size', 'length', 'wave_count', 'intensity', 'cooling', 'frequency']:
+        if value <= 0:
+            return False
+
+    # Additional specific validations
+    if key == 'rings' and value > 100:  # Reasonable upper limit
+        return False
+    if key == 'bars' and value > 64:   # Cannot exceed display width
+        return False
+    if key == 'vortices' and value > 10:  # Too many vortices would be slow
+        return False
+    if key == 'sources' and value > 10:   # Reasonable limit
+        return False
+
+    # Positive-only parameters (can be zero)
+    if key in ['particles', 'density', 'drop_rate', 'spawn_rate']:
+        if value < 0:
+            return False
+
+    return True
+
+
 def parse_effect_opts(opts_string):
     """Parse effect options string like 'fireworks:particles=50,gravity=0.2;balls:count=8'"""
     if not opts_string:
@@ -1423,6 +1540,11 @@ def parse_effect_opts(opts_string):
                     value = int(value)
             except ValueError:
                 pass  # Keep as string
+
+            # Validate value based on effect and key
+            if not validate_effect_option(effect_name, key, value):
+                print(f"Warning: Invalid value '{value}' for {effect_name}.{key}, skipping")
+                continue
 
             result[effect_name][key] = value
 
@@ -1463,22 +1585,22 @@ class DaemonController:
         self.ipc_thread = None
         self.webserver_thread = None
         self.flask_server = None
-        self.lock = threading.Lock()
+        self.cond = threading.Condition()
 
     def should_interrupt(self):
         """Called by effect functions to check for commands"""
-        with self.lock:
+        with self.cond:
             if not self.running or self.skip_to_next or self.skip_to_prev or self.jump_to_effect:
                 return True
 
         # Check pause (release lock while sleeping to allow resume command)
         while True:
-            with self.lock:
+            with self.cond:
                 if not self.paused or not self.running:
                     break
             time.sleep(0.1)
 
-        with self.lock:
+        with self.cond:
             return not self.running
 
     def apply_brightness(self, r, g, b):
@@ -1494,7 +1616,7 @@ class DaemonController:
         try:
             while self.running and (self.args.loops == 0 or loop_count < self.args.loops):
                 # Determine which effects to play based on mode
-                with self.lock:
+                with self.cond:
                     mode = self.playback_mode
                     start_idx = self.effect_index
                     if mode == 'single':
@@ -1510,7 +1632,7 @@ class DaemonController:
                         ]
 
                 for idx, key in effects_to_play:
-                    with self.lock:
+                    with self.cond:
                         if not self.running:
                             break
                         self.effect_index = idx
@@ -1518,13 +1640,11 @@ class DaemonController:
                         self.skip_to_next = False
                         self.skip_to_prev = False
                         self.jump_to_effect = False
+                        # Get effect options while holding lock
+                        opts = get_effect_options(key)
+                        opts.update(self.effect_options.get(key, {}))
 
                     name, func, _ = DEMOS[key]
-                    opts = get_effect_options(key)
-
-                    # Merge with any custom options from daemon
-                    opts.update(self.effect_options.get(key, {}))
-
                     logger.info(f"Starting effect '{key}': {name}")
 
                     # Run effect with interrupt checking
@@ -1537,7 +1657,7 @@ class DaemonController:
                     )
 
                     # Check if we were interrupted
-                    with self.lock:
+                    with self.cond:
                         if not self.running:
                             break
                         if self.jump_to_effect:
@@ -1577,7 +1697,7 @@ class DaemonController:
         command = parts[0].lower()
         arg = parts[1] if len(parts) > 1 else None
 
-        with self.lock:
+        with self.cond:
             if command == "status":
                 uptime = int(time.time() - self.start_time)
                 return {
@@ -1621,7 +1741,13 @@ class DaemonController:
                     self.jump_to_effect = True  # Jump to exact effect without incrementing
                     return {"status": "ok", "message": f"Locked on {arg}"}
                 else:
-                    return {"status": "error", "message": f"Effect {arg} not in current playlist"}
+                    # Allow setting any effect in DEMOS, even if not in current playlist
+                    # Add it temporarily to the end of effect_keys
+                    self.effect_keys.append(arg)
+                    self.effect_index = len(self.effect_keys) - 1
+                    self.playback_mode = 'single'  # Switch to single effect mode
+                    self.jump_to_effect = True  # Jump to exact effect without incrementing
+                    return {"status": "ok", "message": f"Locked on {arg} (special effect)"}
 
             elif command == "playlist":
                 self.playback_mode = 'playlist'
@@ -1698,7 +1824,17 @@ class DaemonController:
                             value = int(value)
                     except ValueError:
                         pass  # Keep as string
+
+                    # Validate value to prevent crashes
+                    if not validate_effect_option(self.current_effect, key, value):
+                        return {"status": "error", "message": f"Invalid value '{value}' for {key}. Must be positive."}
+
                     self.effect_options[self.current_effect][key] = value
+
+                    # Special handling: save all options to config file for text effect
+                    if self.current_effect == "text":
+                        save_text_effect_option(key, value)
+
                     # Interrupt current effect to apply new options immediately
                     self.jump_to_effect = True
                     return {"status": "ok", "message": f"Set {key}={value} for {self.current_effect}"}
