@@ -81,13 +81,22 @@ sudo python demos.py --daemon --webserver --port 8080
 ```
 
 The web interface provides:
-- Real-time status display (current effect, brightness, speed, frequency)
+- Real-time status display (current effect, brightness, speed, frequency, mode)
 - Effect control buttons (next, previous, pause, resume)
-- Effect selector dropdown
-- Interactive sliders for brightness, speed, and frequency
-- Daemon control (stop)
+- Effect selector dropdown (locks in single effect mode)
+- Playlist mode toggle button
+- Global sliders for brightness, speed, and frequency
+- Effect-specific parameter controls in single mode
+- Daemon control (stop - shuts down both daemon and web server)
 
-**Note:** The `bin/led-webserver` script starts the daemon with the web server enabled. You can also run `--webserver` standalone (without `--daemon`) to start only the web interface if a daemon is already running separately.
+**Playback Modes:**
+- **Playlist mode**: Cycles through all effects automatically
+- **Single mode**: Locks on one effect with customizable parameters
+- Selecting from dropdown switches to single mode
+- Next/Previous buttons switch to playlist mode
+- Playlist button returns to playlist mode
+
+**Note:** The `bin/led-webserver` script starts the daemon with the web server enabled. Stopping the daemon automatically stops the web server. You can also run `--webserver` standalone (without `--daemon`) to start only the web interface if a daemon is already running separately.
 
 ## demos.py Command-Line Options
 

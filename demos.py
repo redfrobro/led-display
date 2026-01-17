@@ -1317,6 +1317,7 @@ class DaemonController:
         self.effect_thread = None
         self.ipc_thread = None
         self.webserver_thread = None
+        self.flask_server = None
         self.lock = threading.Lock()
 
     def should_interrupt(self):
@@ -1484,6 +1485,12 @@ class DaemonController:
 
             elif command == "stop":
                 self.running = False
+                # Shutdown Flask server immediately if running
+                if self.flask_server:
+                    try:
+                        threading.Thread(target=self.flask_server.shutdown, daemon=True).start()
+                    except Exception as e:
+                        logger.error(f"Error shutting down Flask server: {e}")
                 return {"status": "ok", "message": "Stopping daemon"}
 
             elif command == "list":
@@ -1547,6 +1554,8 @@ class DaemonController:
                     except ValueError:
                         pass  # Keep as string
                     self.effect_options[self.current_effect][key] = value
+                    # Interrupt current effect to apply new options immediately
+                    self.jump_to_effect = True
                     return {"status": "ok", "message": f"Set {key}={value} for {self.current_effect}"}
                 else:
                     return {"status": "error", "message": "No effect currently running"}
@@ -1603,19 +1612,25 @@ class DaemonController:
 
         try:
             import webserver
+            from werkzeug.serving import make_server
             # Disable Flask's default logging to avoid duplicate messages
             import logging as flask_logging
             flask_log = flask_logging.getLogger('werkzeug')
             flask_log.setLevel(flask_logging.ERROR)
 
-            # Run Flask web server
-            webserver.app.run(
-                host='0.0.0.0',
-                port=self.webserver_port,
-                debug=False,
-                use_reloader=False,
+            # Create server instance that we can shutdown
+            self.flask_server = make_server(
+                '0.0.0.0',
+                self.webserver_port,
+                webserver.app,
                 threaded=True
             )
+
+            logger.info(f"Web server listening on port {self.webserver_port}")
+
+            # Run server (this blocks until shutdown() is called)
+            self.flask_server.serve_forever()
+
         except ImportError:
             logger.error("Flask not installed. Install with: pip install flask")
         except Exception as e:
@@ -1694,11 +1709,28 @@ class DaemonController:
         except KeyboardInterrupt:
             logger.info("Interrupted, shutting down...")
             self.running = False
+
+            # Shutdown Flask server if running
+            if self.flask_server:
+                try:
+                    logger.info("Shutting down web server...")
+                    self.flask_server.shutdown()
+                except Exception as e:
+                    logger.error(f"Error shutting down web server: {e}")
+
             self.effect_thread.join(timeout=2)
             self.ipc_thread.join(timeout=2)
             if self.webserver_thread:
                 self.webserver_thread.join(timeout=2)
         finally:
+            # Ensure Flask server is shut down
+            if self.flask_server:
+                try:
+                    logger.info("Shutting down web server...")
+                    self.flask_server.shutdown()
+                except Exception as e:
+                    logger.debug(f"Web server already shut down: {e}")
+
             # Clean up PID file
             pid_file = "/tmp/led-matrix.pid"
             try:

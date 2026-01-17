@@ -237,15 +237,23 @@ http://your-pi-ip-address:80
 ```
 
 **Features:**
-- **Real-time status display** - Current effect, state, brightness, speed, frequency
+- **Real-time status display** - Current effect, state, brightness, speed, frequency, playback mode
 - **Effect controls** - Next, previous, pause, resume buttons
-- **Effect selector** - Dropdown to jump to any effect
-- **Interactive sliders** - Adjust brightness (0-100), speed (0.1-5.0), frequency (1-10)
-- **Daemon control** - Stop the daemon
+- **Effect selector** - Dropdown to jump to any effect (locks in single effect mode)
+- **Playlist mode toggle** - Switch between single effect and playlist modes
+- **Global sliders** - Adjust brightness (0-100), speed (0.1-5.0), frequency (1-10)
+- **Effect-specific controls** - Custom parameters for each effect in single mode
+  - Fire: intensity, cooling
+  - Matrix: speed, trail length
+  - Fireworks: particles, gravity
+  - Lightning: branches, fade, color
+  - And 18 more effects with unique parameters
+- **Daemon control** - Stop button (stops both daemon and web server)
 - **Auto-refresh** - Status updates every 2 seconds
+- **Debounced inputs** - Smooth slider adjustments without flooding commands
 - **Responsive design** - Works on desktop and mobile browsers
 
-The web interface is designed with a dark theme optimized for controlling LED displays.
+The web interface is designed with a dark theme optimized for controlling LED displays. When you stop the daemon via the web interface or command line, the web server automatically shuts down as well.
 
 ## Effects
 

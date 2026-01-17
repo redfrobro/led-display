@@ -170,6 +170,10 @@ HTML_TEMPLATE = """
             padding: 20px;
             font-size: 1.2em;
         }
+        .debouncing {
+            opacity: 0.7;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -279,41 +283,121 @@ HTML_TEMPLATE = """
 
     <script>
         let effectList = [];
+        let currentEffectKey = null;
+        let debounceTimers = {};
+        let isUpdatingFromStatus = false;
+        let lastSentValues = {
+            brightness: 50,
+            speed: 1.0,
+            frequency: 5
+        };
+
+        // Debounce function to prevent rapid firing of commands
+        function debounce(func, wait) {
+            return function(...args) {
+                const context = this;
+                clearTimeout(debounceTimers[func.name]);
+                debounceTimers[func.name] = setTimeout(() => {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+
+        // Throttle function for slider updates
+        function throttle(func, wait) {
+            let inThrottle;
+            return function(...args) {
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, wait);
+                }
+            };
+        }
 
         function updateStatus() {
             fetch('/api/status')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.status === 'offline') {
                         document.getElementById('offline-warning').style.display = 'block';
                         document.getElementById('controls').style.display = 'none';
-                    } else {
-                        document.getElementById('offline-warning').style.display = 'none';
-                        document.getElementById('controls').style.display = 'block';
-
-                        document.getElementById('current-effect').textContent = data.effect || '-';
-                        document.getElementById('state').textContent = data.state || '-';
-                        document.getElementById('brightness-display').textContent = data.brightness || '-';
-                        document.getElementById('speed-display').textContent = data.speed || '-';
-                        document.getElementById('frequency-display').textContent = data.frequency || '-';
-
-                        // Display mode (capitalize first letter)
-                        const mode = data.mode || 'playlist';
-                        document.getElementById('mode-display').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
-
-                        // Update dropdown to match current effect
-                        const effectKey = data.effect_key;
-                        const dropdown = document.getElementById('effect-select');
-                        if (effectKey && dropdown.value !== effectKey) {
-                            dropdown.value = effectKey;
-                        }
-
-                        // Load effect-specific options if in single mode
-                        loadEffectOptions(effectKey, mode);
+                        return;
                     }
+                    
+                    document.getElementById('offline-warning').style.display = 'none';
+                    document.getElementById('controls').style.display = 'block';
+
+                    // Prevent slider updates from triggering commands while we update from status
+                    isUpdatingFromStatus = true;
+
+                    // Update display values
+                    document.getElementById('current-effect').textContent = data.effect || '-';
+                    document.getElementById('state').textContent = data.state || '-';
+                    document.getElementById('brightness-display').textContent = data.brightness || '-';
+                    document.getElementById('speed-display').textContent = data.speed || '-';
+                    document.getElementById('frequency-display').textContent = data.frequency || '-';
+
+                    // Update mode display
+                    const mode = data.mode || 'playlist';
+                    document.getElementById('mode-display').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+
+                    // Update dropdown to match current effect
+                    const effectKey = data.effect_key;
+                    const dropdown = document.getElementById('effect-select');
+                    if (effectKey && dropdown.value !== effectKey) {
+                        dropdown.value = effectKey;
+                    }
+
+                    // Only update sliders if values differ significantly from what we last sent
+                    const brightness = parseInt(data.brightness) || 50;
+                    const speed = parseFloat(data.speed) || 1.0;
+                    const frequency = parseInt(data.frequency) || 5;
+
+                    if (Math.abs(brightness - lastSentValues.brightness) > 5) {
+                        document.getElementById('brightness').value = brightness;
+                        document.getElementById('brightness-value').textContent = brightness;
+                        lastSentValues.brightness = brightness;
+                    }
+
+                    if (Math.abs(speed - lastSentValues.speed) > 0.5) {
+                        document.getElementById('speed').value = Math.round(speed * 10);
+                        document.getElementById('speed-value').textContent = speed.toFixed(1);
+                        lastSentValues.speed = speed;
+                    }
+
+                    if (Math.abs(frequency - lastSentValues.frequency) > 1) {
+                        document.getElementById('frequency').value = frequency;
+                        document.getElementById('frequency-value').textContent = frequency;
+                        lastSentValues.frequency = frequency;
+                    }
+
+                    // Load effect options if effect changed or mode is single
+                    if (mode === 'single' && effectKey && effectKey !== currentEffectKey) {
+                        loadEffectOptions(effectKey);
+                        currentEffectKey = effectKey;
+                    } else if (mode !== 'single') {
+                        // Hide effect options in playlist mode
+                        document.getElementById('effect-options-section').style.display = 'none';
+                        currentEffectKey = null;
+                    }
+
+                    // Re-enable slider updates
+                    setTimeout(() => {
+                        isUpdatingFromStatus = false;
+                    }, 100);
                 })
                 .catch(err => {
                     console.error('Status update failed:', err);
+                    // If we can't reach the server, show offline warning
+                    document.getElementById('offline-warning').style.display = 'block';
+                    document.getElementById('controls').style.display = 'none';
                 });
         }
 
@@ -335,22 +419,49 @@ HTML_TEMPLATE = """
 
         function sendCommand(cmd, args = null) {
             const payload = args ? {command: cmd, args: args} : {command: cmd};
+            
+            // Show loading state
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = 'Sending command...';
+            messageDiv.className = 'message';
+            messageDiv.style.display = 'block';
+
             fetch('/api/command', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             })
-            .then(response => response.json())
-            .then(data => {
-                showMessage(data.message || 'Command sent', data.success ? 'success' : 'error');
-                if (data.success) {
-                    setTimeout(updateStatus, 100);
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    messageDiv.textContent = data.message || 'Command sent successfully';
+                    messageDiv.className = 'message success';
+                    setTimeout(updateStatus, 300); // Wait a bit before updating status
+                } else {
+                    messageDiv.textContent = data.message || 'Command failed';
+                    messageDiv.className = 'message error';
+                }
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
             })
             .catch(err => {
-                showMessage('Command failed: ' + err, 'error');
+                messageDiv.textContent = 'Command failed: ' + err.message;
+                messageDiv.className = 'message error';
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+                console.error('Command error:', err);
             });
         }
+
+        // Debounced version of sendCommand for sliders
+        const debouncedSendCommand = debounce(sendCommand, 300);
 
         function selectEffect() {
             const effect = document.getElementById('effect-select').value;
@@ -360,49 +471,55 @@ HTML_TEMPLATE = """
         }
 
         function updateSlider(type) {
-            const value = document.getElementById(type).value;
+            if (isUpdatingFromStatus) return;
+            
+            const slider = document.getElementById(type);
+            const value = slider.value;
+            const valueSpan = document.getElementById(type + '-value');
+            
             if (type === 'speed') {
                 const speedValue = (value / 10).toFixed(1);
-                document.getElementById(type + '-value').textContent = speedValue;
+                valueSpan.textContent = speedValue;
+                lastSentValues.speed = parseFloat(speedValue);
             } else {
-                document.getElementById(type + '-value').textContent = value;
+                valueSpan.textContent = value;
+                if (type === 'brightness') {
+                    lastSentValues.brightness = parseInt(value);
+                } else if (type === 'frequency') {
+                    lastSentValues.frequency = parseInt(value);
+                }
             }
         }
 
         function setBrightness() {
+            if (isUpdatingFromStatus) return;
             const value = document.getElementById('brightness').value;
-            sendCommand('brightness', value);
+            debouncedSendCommand('brightness', value);
         }
 
         function setSpeed() {
+            if (isUpdatingFromStatus) return;
             const value = (document.getElementById('speed').value / 10).toFixed(1);
-            sendCommand('speed', value);
+            debouncedSendCommand('speed', value);
         }
 
         function setFrequency() {
+            if (isUpdatingFromStatus) return;
             const value = document.getElementById('frequency').value;
-            sendCommand('frequency', value);
+            debouncedSendCommand('frequency', value);
         }
 
-        function loadEffectOptions(effectKey, mode) {
-            const section = document.getElementById('effect-options-section');
-            const container = document.getElementById('effect-options-container');
-
-            // Only show effect options in single mode
-            if (mode !== 'single' || !effectKey) {
-                section.style.display = 'none';
-                return;
-            }
-
+        function loadEffectOptions(effectKey) {
             fetch(`/api/effect/${effectKey}/options`)
                 .then(response => response.json())
                 .then(data => {
                     if (!data.options || data.options.length === 0) {
-                        section.style.display = 'none';
+                        document.getElementById('effect-options-section').style.display = 'none';
                         return;
                     }
 
-                    section.style.display = 'block';
+                    document.getElementById('effect-options-section').style.display = 'block';
+                    const container = document.getElementById('effect-options-container');
                     container.innerHTML = '';
 
                     data.options.forEach(option => {
@@ -419,10 +536,48 @@ HTML_TEMPLATE = """
                                         style="width: 100%;">${option.default ? 'On' : 'Off'}</button>
                             `;
                         } else if (option.type === 'number') {
-                            const isFloat = typeof option.default === 'number' && option.default % 1 !== 0;
-                            const min = isFloat ? (option.default * 0.1) : Math.max(1, option.default - 10);
-                            const max = isFloat ? (option.default * 3) : (option.default + 20);
-                            const step = isFloat ? 0.1 : 1;
+                            // Determine appropriate min/max based on default value
+                            let min = 0;
+                            let max = 100;
+                            let step = 1;
+                            
+                            if (typeof option.default === 'number') {
+                                if (option.default <= 1) {
+                                    min = 0;
+                                    max = 1;
+                                    step = 0.1;
+                                } else if (option.default <= 10) {
+                                    min = 0;
+                                    max = Math.max(20, option.default * 2);
+                                } else if (option.default <= 100) {
+                                    min = 0;
+                                    max = Math.max(200, option.default * 2);
+                                } else {
+                                    min = 0;
+                                    max = Math.max(500, option.default * 2);
+                                }
+                                
+                                // Special handling for known option ranges
+                                if (option.key === 'intensity' || option.key === 'cooling') {
+                                    min = 1;
+                                    max = 10;
+                                } else if (option.key === 'frequency') {
+                                    min = 1;
+                                    max = 10;
+                                } else if (option.key === 'speed') {
+                                    min = 0.1;
+                                    max = 5.0;
+                                    step = 0.1;
+                                } else if (option.key === 'saturation') {
+                                    min = 0;
+                                    max = 1;
+                                    step = 0.1;
+                                } else if (option.key === 'gravity') {
+                                    min = 0.01;
+                                    max = 0.5;
+                                    step = 0.01;
+                                }
+                            }
 
                             optDiv.innerHTML = `
                                 <div class="slider-label">
@@ -434,11 +589,23 @@ HTML_TEMPLATE = """
                                        oninput="updateEffectOption('${option.key}')"
                                        onchange="setEffectOption('${option.key}')">
                             `;
+                        } else if (option.type === 'text') {
+                            optDiv.innerHTML = `
+                                <div class="slider-label">
+                                    <span>${option.description}</span>
+                                </div>
+                                <input type="text" id="${option.key}" value="${option.default}"
+                                       style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #00ff88; background: #1a1a1a; color: #e0e0e0;"
+                                       onchange="setTextEffectOption('${option.key}')">
+                            `;
                         }
                         container.appendChild(optDiv);
                     });
                 })
-                .catch(err => console.error('Failed to load effect options:', err));
+                .catch(err => {
+                    console.error('Failed to load effect options:', err);
+                    document.getElementById('effect-options-section').style.display = 'none';
+                });
         }
 
         function updateEffectOption(key) {
@@ -447,11 +614,19 @@ HTML_TEMPLATE = """
         }
 
         function setEffectOption(key) {
+            if (isUpdatingFromStatus) return;
+            const value = document.getElementById(key).value;
+            debouncedSendCommand('opt', `${key}=${value}`);
+        }
+
+        function setTextEffectOption(key) {
+            if (isUpdatingFromStatus) return;
             const value = document.getElementById(key).value;
             sendCommand('opt', `${key}=${value}`);
         }
 
         function toggleEffectOption(key) {
+            if (isUpdatingFromStatus) return;
             const button = document.getElementById(key + '-toggle');
             const valueSpan = document.getElementById(key + '-value');
             const currentValue = button.textContent === 'On';
@@ -466,15 +641,21 @@ HTML_TEMPLATE = """
             const msg = document.getElementById('message');
             msg.textContent = text;
             msg.className = 'message ' + type;
+            msg.style.display = 'block';
             setTimeout(() => {
                 msg.style.display = 'none';
             }, 3000);
         }
 
-        // Update status every 2 seconds
-        updateStatus();
-        loadEffects();
-        setInterval(updateStatus, 2000);
+        // Initialize
+        function init() {
+            updateStatus();
+            loadEffects();
+            setInterval(updateStatus, 2000);
+        }
+
+        // Start when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
@@ -509,19 +690,20 @@ def get_status():
                 'frequency': response.get('frequency', 5),
                 'mode': response.get('playback_mode', 'playlist')
             })
+        else:
+            return jsonify({'status': 'offline'})
     except Exception as e:
-        pass
-
-    return jsonify({'status': 'offline'})
+        print(f"Error getting status: {e}")
+        return jsonify({'status': 'offline'})
 
 @app.route('/api/effects')
 def get_effects():
     """Get list of available effects"""
-    # Import effect lists from demos.py
     try:
         from demos import DEMOS
         return jsonify({'effects': list(DEMOS.keys())})
-    except:
+    except Exception as e:
+        print(f"Error getting effects: {e}")
         # Fallback list
         effects = ['plasma', 'fire', 'matrix', 'sparkle', 'meteor', 'spiral',
                    'balls', 'lightning', 'fireworks', 'starfield', 'bubbles', 'comet',
@@ -539,7 +721,12 @@ def get_effect_options(effect_key):
             # Convert options dict to a list with metadata
             options_list = []
             for key, (default, description) in options.items():
-                option_type = 'boolean' if isinstance(default, bool) else ('number' if isinstance(default, (int, float)) else 'text')
+                if isinstance(default, bool):
+                    option_type = 'boolean'
+                elif isinstance(default, (int, float)):
+                    option_type = 'number'
+                else:
+                    option_type = 'text'
                 options_list.append({
                     'key': key,
                     'default': default,
@@ -547,8 +734,8 @@ def get_effect_options(effect_key):
                     'type': option_type
                 })
             return jsonify({'options': options_list})
-    except:
-        pass
+    except Exception as e:
+        print(f"Error getting effect options: {e}")
     return jsonify({'options': []})
 
 @app.route('/api/command', methods=['POST'])
@@ -565,6 +752,57 @@ def send_control_command():
         return jsonify({'success': False, 'message': 'No command specified'})
 
     try:
+        # Validate and sanitize input
+        if cmd in ['brightness', 'frequency']:
+            try:
+                value = int(args)
+                if cmd == 'brightness' and (value < 0 or value > 100):
+                    return jsonify({'success': False, 'message': 'Brightness must be between 0 and 100'})
+                elif cmd == 'frequency' and (value < 1 or value > 10):
+                    return jsonify({'success': False, 'message': 'Frequency must be between 1 and 10'})
+            except ValueError:
+                return jsonify({'success': False, 'message': f'Invalid value for {cmd}'})
+        elif cmd == 'speed':
+            try:
+                value = float(args)
+                if value < 0.1 or value > 5.0:
+                    return jsonify({'success': False, 'message': 'Speed must be between 0.1 and 5.0'})
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Invalid speed value'})
+        elif cmd == 'opt':
+            if not args or '=' not in args:
+                return jsonify({'success': False, 'message': 'Invalid option format. Use key=value'})
+            
+            # Basic validation for opt command
+            key, value = args.split('=', 1)
+            # Remove any whitespace
+            key = key.strip()
+            value = value.strip()
+            
+            # Validate the value based on key
+            if key in ['intensity', 'cooling', 'frequency']:
+                try:
+                    int_val = int(value)
+                    if int_val < 1 or int_val > 10:
+                        return jsonify({'success': False, 'message': f'{key} must be between 1 and 10'})
+                except ValueError:
+                    return jsonify({'success': False, 'message': f'Invalid value for {key}'})
+            elif key in ['speed', 'gravity']:
+                try:
+                    float_val = float(value)
+                    if key == 'speed' and (float_val < 0.1 or float_val > 5.0):
+                        return jsonify({'success': False, 'message': 'Speed must be between 0.1 and 5.0'})
+                except ValueError:
+                    return jsonify({'success': False, 'message': f'Invalid value for {key}'})
+            elif key == 'saturation':
+                try:
+                    float_val = float(value)
+                    if float_val < 0 or float_val > 1:
+                        return jsonify({'success': False, 'message': 'Saturation must be between 0 and 1'})
+                except ValueError:
+                    return jsonify({'success': False, 'message': 'Invalid saturation value'})
+
+        # Send command to daemon
         if args:
             response = send_command(f"{cmd} {args}")
         else:
@@ -577,12 +815,11 @@ def send_control_command():
                 'response': response
             })
         else:
-            return jsonify({
-                'success': False,
-                'message': response.get('message', 'Command failed') if response else 'No response'
-            })
+            error_msg = response.get('message', 'Command failed') if response else 'No response from daemon'
+            return jsonify({'success': False, 'message': error_msg})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        print(f"Error sending command {cmd}: {e}")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 def main():
     parser = argparse.ArgumentParser(description='LED Matrix Web Control Interface')
@@ -599,7 +836,7 @@ def main():
     print("Press Ctrl+C to stop")
 
     try:
-        app.run(host=args.host, port=args.port, debug=False)
+        app.run(host=args.host, port=args.port, debug=False, threaded=True)
     except PermissionError:
         print(f"Error: Permission denied. Port {args.port} requires sudo.")
         sys.exit(1)
