@@ -226,6 +226,13 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
+        <div id="effect-options-section" class="control-section" style="display: none;">
+            <h2>Effect Options</h2>
+            <div id="effect-options-container">
+                <!-- Effect-specific options will be dynamically loaded here -->
+            </div>
+        </div>
+
         <div class="control-section">
             <h2>Settings</h2>
 
@@ -300,6 +307,9 @@ HTML_TEMPLATE = """
                         if (effectKey && dropdown.value !== effectKey) {
                             dropdown.value = effectKey;
                         }
+
+                        // Load effect-specific options if in single mode
+                        loadEffectOptions(effectKey, mode);
                     }
                 })
                 .catch(err => {
@@ -374,6 +384,84 @@ HTML_TEMPLATE = """
             sendCommand('frequency', value);
         }
 
+        function loadEffectOptions(effectKey, mode) {
+            const section = document.getElementById('effect-options-section');
+            const container = document.getElementById('effect-options-container');
+
+            // Only show effect options in single mode
+            if (mode !== 'single' || !effectKey) {
+                section.style.display = 'none';
+                return;
+            }
+
+            fetch(`/api/effect/${effectKey}/options`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.options || data.options.length === 0) {
+                        section.style.display = 'none';
+                        return;
+                    }
+
+                    section.style.display = 'block';
+                    container.innerHTML = '';
+
+                    data.options.forEach(option => {
+                        const optDiv = document.createElement('div');
+                        optDiv.className = 'slider-container';
+
+                        if (option.type === 'boolean') {
+                            optDiv.innerHTML = `
+                                <div class="slider-label">
+                                    <span>${option.description}</span>
+                                    <span id="${option.key}-value">${option.default ? 'On' : 'Off'}</span>
+                                </div>
+                                <button id="${option.key}-toggle" onclick="toggleEffectOption('${option.key}')"
+                                        style="width: 100%;">${option.default ? 'On' : 'Off'}</button>
+                            `;
+                        } else if (option.type === 'number') {
+                            const isFloat = typeof option.default === 'number' && option.default % 1 !== 0;
+                            const min = isFloat ? (option.default * 0.1) : Math.max(1, option.default - 10);
+                            const max = isFloat ? (option.default * 3) : (option.default + 20);
+                            const step = isFloat ? 0.1 : 1;
+
+                            optDiv.innerHTML = `
+                                <div class="slider-label">
+                                    <span>${option.description}</span>
+                                    <span id="${option.key}-value">${option.default}</span>
+                                </div>
+                                <input type="range" id="${option.key}"
+                                       min="${min}" max="${max}" step="${step}" value="${option.default}"
+                                       oninput="updateEffectOption('${option.key}')"
+                                       onchange="setEffectOption('${option.key}')">
+                            `;
+                        }
+                        container.appendChild(optDiv);
+                    });
+                })
+                .catch(err => console.error('Failed to load effect options:', err));
+        }
+
+        function updateEffectOption(key) {
+            const value = document.getElementById(key).value;
+            document.getElementById(key + '-value').textContent = value;
+        }
+
+        function setEffectOption(key) {
+            const value = document.getElementById(key).value;
+            sendCommand('opt', `${key}=${value}`);
+        }
+
+        function toggleEffectOption(key) {
+            const button = document.getElementById(key + '-toggle');
+            const valueSpan = document.getElementById(key + '-value');
+            const currentValue = button.textContent === 'On';
+            const newValue = !currentValue;
+
+            button.textContent = newValue ? 'On' : 'Off';
+            valueSpan.textContent = newValue ? 'On' : 'Off';
+            sendCommand('opt', `${key}=${newValue}`);
+        }
+
         function showMessage(text, type) {
             const msg = document.getElementById('message');
             msg.textContent = text;
@@ -440,6 +528,28 @@ def get_effects():
                    'waves', 'rain', 'life', 'tunnel', 'pulse', 'warp',
                    'aurora', 'spectrum', 'swirl', 'ripple']
         return jsonify({'effects': effects})
+
+@app.route('/api/effect/<effect_key>/options')
+def get_effect_options(effect_key):
+    """Get customizable options for a specific effect"""
+    try:
+        from demos import DEMOS
+        if effect_key in DEMOS:
+            _, _, options = DEMOS[effect_key]
+            # Convert options dict to a list with metadata
+            options_list = []
+            for key, (default, description) in options.items():
+                option_type = 'boolean' if isinstance(default, bool) else ('number' if isinstance(default, (int, float)) else 'text')
+                options_list.append({
+                    'key': key,
+                    'default': default,
+                    'description': description,
+                    'type': option_type
+                })
+            return jsonify({'options': options_list})
+    except:
+        pass
+    return jsonify({'options': []})
 
 @app.route('/api/command', methods=['POST'])
 def send_control_command():
