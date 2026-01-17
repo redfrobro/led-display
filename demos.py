@@ -15,7 +15,7 @@ logger = logging.getLogger('led-demos')
 logger.addHandler(logging.NullHandler())
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
 ROWS = 32
 COLS = 64
@@ -1298,37 +1298,50 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
         # Save new color hue to config for persistence
         save_text_effect_option('color_hue', color_hue)
 
-    # Load font from fonts folder
+    # Load font using rgbmatrix graphics
     font_path = os.path.join(os.path.dirname(__file__), 'fonts', font_name)
     logger.info(f"Font path: {font_path}, exists: {os.path.exists(font_path)}")
+
+    font = graphics.Font()
     try:
-        font = ImageFont.load(font_path)
-        logger.info(f"Loaded font: {font_name}")
+        font.LoadFont(font_path)
+        logger.info(f"Loaded BDF font: {font_name}")
+        # Log font metrics if available
+        if hasattr(font, 'height'):
+            logger.info(f"Font height: {font.height}, baseline: {font.baseline if hasattr(font, 'baseline') else 'N/A'}")
     except Exception as e:
-        logger.error(f"Failed to load font {font_name}: {e}")
-        # Fallback to default font
-        font = ImageFont.load_default()
-        logger.info("Falling back to default font")
-
-    # Create image for text rendering
-    img = Image.new('RGB', (COLS, ROWS), color=(0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    # Get text dimensions using textbbox (newer PIL API)
-    try:
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-    except AttributeError:
-        # Fallback for older PIL versions
-        text_width, text_height = draw.textsize(text, font=font)
-
-    # Calculate vertical position to center text
-    y_pos = (ROWS - text_height) // 2
+        logger.error(f"Failed to load BDF font {font_name}: {e}")
+        # Try to load default font as fallback
+        default_font = '6x10.bdf'
+        default_path = os.path.join(os.path.dirname(__file__), 'fonts', default_font)
+        logger.info(f"Trying fallback font: {default_font}")
+        try:
+            font.LoadFont(default_path)
+            logger.info(f"Loaded fallback font: {default_font}")
+        except Exception as e2:
+            logger.error(f"Failed to load fallback font {default_font}: {e2}")
+            return
 
     # Convert color from HSV to RGB
     r, g, b = hsv_to_rgb(color_hue, 1.0, 1.0)
-    text_color = (r, g, b)
+    text_color = graphics.Color(r, g, b)
+
+    # Create a canvas for drawing
+    canvas = matrix.CreateFrameCanvas()
+
+    # Measure text width
+    text_width = graphics.DrawText(canvas, font, 0, 0, text_color, text)
+
+    # Calculate vertical position (try to center)
+    # Use font.height if available, otherwise estimate
+    if hasattr(font, 'height'):
+        font_height = font.height
+        # Baseline is distance from top to baseline of text
+        baseline = font.baseline if hasattr(font, 'baseline') else font_height
+        y_pos = (ROWS - font_height) // 2 + baseline
+    else:
+        # Default to middle of screen
+        y_pos = ROWS // 2
 
     start_time = time.time()
     scroll_offset = 0
@@ -1338,23 +1351,23 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
 
     if needs_scroll:
         # Scrolling mode
-        total_scroll_width = text_width + COLS  # Scroll text completely off screen and back
+        total_scroll_width = text_width + COLS
 
         while time.time() - start_time < duration:
             if check_interrupt and check_interrupt():
                 return
 
-            # Clear image
-            draw.rectangle((0, 0, COLS, ROWS), fill=(0, 0, 0))
+            # Clear canvas
+            canvas.Clear()
 
             # Calculate x position for scrolling (right to left)
             x_pos = COLS - scroll_offset
 
             # Draw text
-            draw.text((x_pos, y_pos), text, font=font, fill=text_color)
+            graphics.DrawText(canvas, font, x_pos, y_pos, text_color, text)
 
-            # Update matrix from image
-            matrix.SetImage(img.convert('RGB'))
+            # Swap buffer
+            canvas = matrix.SwapOnVSync(canvas)
 
             # Update scroll position
             scroll_offset += scroll_speed * 0.05  # Adjust for frame time
@@ -1366,9 +1379,10 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
         # Static centered mode
         x_pos = (COLS - text_width) // 2
 
-        # Draw once
-        draw.text((x_pos, y_pos), text, font=font, fill=text_color)
-        matrix.SetImage(img.convert('RGB'))
+        # Clear canvas and draw text once
+        canvas.Clear()
+        graphics.DrawText(canvas, font, x_pos, y_pos, text_color, text)
+        canvas = matrix.SwapOnVSync(canvas)
 
         # Just wait for duration
         while time.time() - start_time < duration:
@@ -1854,7 +1868,8 @@ class DaemonController:
                             return {"status": "error", "message": f"Font file not found: {value}"}
                         try:
                             # Try to load the font to validate it works
-                            font = ImageFont.load(font_path)
+                            font = graphics.Font()
+                            font.LoadFont(font_path)
                             logger.info(f"Font validation passed: {value}")
                         except Exception as e:
                             logger.error(f"Font validation failed for {value}: {e}")
