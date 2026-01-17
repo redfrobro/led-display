@@ -1276,21 +1276,32 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
 
     if font_name is None:
         font_name = config['font_name']
+    else:
+        # Save new font to config for persistence
+        save_text_effect_option('font_name', font_name)
 
     if scroll_speed is None:
         scroll_speed = config['scroll_speed']
+    else:
+        # Save new scroll speed to config for persistence
+        save_text_effect_option('scroll_speed', scroll_speed)
 
     if color_hue is None:
         color_hue = config['color_hue']
+    else:
+        # Save new color hue to config for persistence
+        save_text_effect_option('color_hue', color_hue)
 
     # Load font from fonts folder
     font_path = os.path.join(os.path.dirname(__file__), 'fonts', font_name)
     try:
         font = ImageFont.load(font_path)
+        logger.info(f"Loaded font: {font_name}")
     except Exception as e:
         logger.error(f"Failed to load font {font_name}: {e}")
         # Fallback to default font
         font = ImageFont.load_default()
+        logger.info("Falling back to default font")
 
     # Create image for text rendering
     img = Image.new('RGB', (COLS, ROWS), color=(0, 0, 0))
