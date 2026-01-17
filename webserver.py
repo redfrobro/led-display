@@ -227,6 +227,7 @@ HTML_TEMPLATE = """
 
             <div class="button-grid" style="margin-top: 15px;">
                 <button onclick="sendCommand('playlist')">🎵 Playlist Mode</button>
+                <button onclick="sendCommand('set', 'text')">📝 Text Mode</button>
             </div>
         </div>
 

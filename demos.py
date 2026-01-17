@@ -8,6 +8,7 @@ import socket
 import threading
 import json
 from random import randrange, random, choice, shuffle
+from PIL import Image, ImageDraw, ImageFont
 
 # Setup logging (disabled by default)
 logger = logging.getLogger('led-demos')
@@ -125,16 +126,23 @@ def fire_effect(duration=8, frequency=5, intensity=4, cooling=3, check_interrupt
             if randrange(10) < intensity:
                 heat[0][x] = min(255, heat[0][x] + randrange(160, 255))
 
-        # Render
+        # Render with more vivid fire colors
         for y in range(ROWS):
             for x in range(COLS):
                 h = heat[ROWS - 1 - y][x]
-                if h < 85:
-                    r, g, b = min(255, h * 3), 0, 0
-                elif h < 170:
-                    r, g, b = 255, min(255, (h - 85) * 3), 0
+                if h < 64:
+                    # Deep red to bright red (more saturated)
+                    r, g, b = min(255, h * 4), 0, 0
+                elif h < 128:
+                    # Bright red to orange (stronger orange)
+                    r, g, b = 255, min(255, (h - 64) * 4), 0
+                elif h < 192:
+                    # Orange to yellow (more yellow)
+                    r, g, b = 255, 255, min(255, (h - 128) * 4)
                 else:
-                    r, g, b = 255, 255, min(255, (h - 170) * 3)
+                    # Yellow to white (bright core)
+                    intensity = min(255, (h - 192) * 4)
+                    r, g, b = 255, 255, intensity
                 matrix.SetPixel(x, y, r, g, b)
 
         time.sleep(0.05)
@@ -599,22 +607,36 @@ def ocean_waves(duration=8, frequency=5, wave_count=3, speed=1.0, check_interrup
                 # Normalize wave height
                 wave_height = (wave + wave_count) / (wave_count * 2)
 
-                # Color based on depth
+                # More vivid ocean colors with better contrast
                 depth = (y / ROWS)
-                blue = int(100 + 155 * wave_height * (1 - depth * 0.3))
-                green = int(50 + 100 * wave_height * (1 - depth * 0.5))
-                white = int(max(0, (wave_height - 0.7) * 800))  # Foam on peaks
+
+                # Deep water is dark blue, crests are cyan/turquoise
+                if wave_height < 0.3:
+                    # Deep dark blue
+                    blue = int(80 + 50 * wave_height)
+                    green = int(20 * wave_height)
+                elif wave_height < 0.6:
+                    # Mid-depth - transition to cyan
+                    blue = int(130 + 100 * (wave_height - 0.3))
+                    green = int(20 + 150 * (wave_height - 0.3))
+                else:
+                    # Shallow/crests - bright cyan to white
+                    blue = 230
+                    green = int(170 + 85 * (wave_height - 0.6))
+
+                # Brighter foam on peaks
+                white = int(max(0, (wave_height - 0.65) * 600))
 
                 # Update foam
-                if wave_height > 0.75 and y < ROWS - 1:
-                    foam[y][x] = min(255, foam[y][x] + 30)
+                if wave_height > 0.7 and y < ROWS - 1:
+                    foam[y][x] = min(255, foam[y][x] + 40)
 
                 # Decay foam
-                foam[y][x] = max(0, foam[y][x] - 5)
+                foam[y][x] = max(0, foam[y][x] - 8)
 
                 r = min(255, white + foam[y][x])
-                g = min(255, green + foam[y][x])
-                b = min(255, blue)
+                g = min(255, green + int(foam[y][x] * 0.8))
+                b = min(255, blue + int(foam[y][x] * 0.3))
 
                 matrix.SetPixel(x, y, r, g, b)
 
@@ -1133,6 +1155,122 @@ def ripple_pond(duration=8, frequency=5, auto_drops=True, drop_rate=30, check_in
         time.sleep(0.03)
 
 
+# Text display configuration file
+TEXT_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'text_config.json')
+
+def load_text_config():
+    """Load custom text from config file, or return default"""
+    if os.path.exists(TEXT_CONFIG_FILE):
+        try:
+            with open(TEXT_CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                return config.get('text', 'Hello World')
+        except Exception as e:
+            logger.warning(f"Failed to load text config: {e}")
+    return 'Hello World'
+
+def save_text_config(text):
+    """Save custom text to config file"""
+    try:
+        with open(TEXT_CONFIG_FILE, 'w') as f:
+            json.dump({'text': text}, f)
+        logger.info(f"Saved text config: {text}")
+    except Exception as e:
+        logger.error(f"Failed to save text config: {e}")
+
+def text_display(duration=8, frequency=5, text=None, font_name='6x10.bdf',
+                 scroll_speed=2.0, color_hue=200, check_interrupt=None, **kwargs):
+    """Display scrolling or static text on the matrix
+
+    Args:
+        text: Text to display (if None, loads from config file)
+        font_name: BDF font file from fonts/ folder
+        scroll_speed: Pixels per second for scrolling (0 = static centered)
+        color_hue: Color hue 0-360 for text
+    """
+    # Load text from config if not provided
+    if text is None:
+        text = load_text_config()
+    else:
+        # Save new text to config for persistence
+        save_text_config(text)
+
+    # Load font from fonts folder
+    font_path = os.path.join(os.path.dirname(__file__), 'fonts', font_name)
+    try:
+        font = ImageFont.load(font_path)
+    except Exception as e:
+        logger.error(f"Failed to load font {font_name}: {e}")
+        # Fallback to default font
+        font = ImageFont.load_default()
+
+    # Create image for text rendering
+    img = Image.new('RGB', (COLS, ROWS), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # Get text dimensions using textbbox (newer PIL API)
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+    except AttributeError:
+        # Fallback for older PIL versions
+        text_width, text_height = draw.textsize(text, font=font)
+
+    # Calculate vertical position to center text
+    y_pos = (ROWS - text_height) // 2
+
+    # Convert color from HSV to RGB
+    r, g, b = hsv_to_rgb(color_hue, 1.0, 1.0)
+    text_color = (r, g, b)
+
+    start_time = time.time()
+    scroll_offset = 0
+
+    # Determine if we need to scroll
+    needs_scroll = text_width > COLS and scroll_speed > 0
+
+    if needs_scroll:
+        # Scrolling mode
+        total_scroll_width = text_width + COLS  # Scroll text completely off screen and back
+
+        while time.time() - start_time < duration:
+            if check_interrupt and check_interrupt():
+                return
+
+            # Clear image
+            draw.rectangle((0, 0, COLS, ROWS), fill=(0, 0, 0))
+
+            # Calculate x position for scrolling (right to left)
+            x_pos = COLS - scroll_offset
+
+            # Draw text
+            draw.text((x_pos, y_pos), text, font=font, fill=text_color)
+
+            # Update matrix from image
+            matrix.SetImage(img.convert('RGB'))
+
+            # Update scroll position
+            scroll_offset += scroll_speed * 0.05  # Adjust for frame time
+            if scroll_offset > total_scroll_width:
+                scroll_offset = 0  # Loop back to start
+
+            time.sleep(0.05)  # ~20 FPS
+    else:
+        # Static centered mode
+        x_pos = (COLS - text_width) // 2
+
+        # Draw once
+        draw.text((x_pos, y_pos), text, font=font, fill=text_color)
+        matrix.SetImage(img.convert('RGB'))
+
+        # Just wait for duration
+        while time.time() - start_time < duration:
+            if check_interrupt and check_interrupt():
+                return
+            time.sleep(0.1)
+
+
 # All demo functions with their customizable options
 # Format: "name": (display_name, function, {option: (default, description)})
 DEMOS = {
@@ -1225,6 +1363,13 @@ DEMOS = {
     "ripple": ("Ripple Pond", ripple_pond, {
         "auto_drops": (True, "Automatic water drops"),
         "drop_rate": (30, "Drop frequency"),
+    }),
+    # Special effects (not in default playlists)
+    "text": ("Text Display", text_display, {
+        "text": (None, "Text to display (None = load from config)"),
+        "font_name": ('6x10.bdf', "BDF font file from fonts/ folder"),
+        "scroll_speed": (2.0, "Scroll speed in pixels/sec (0 = static)"),
+        "color_hue": (200, "Text color hue 0-360"),
     }),
 }
 
