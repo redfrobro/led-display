@@ -293,6 +293,13 @@ HTML_TEMPLATE = """
                         // Display mode (capitalize first letter)
                         const mode = data.mode || 'playlist';
                         document.getElementById('mode-display').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+
+                        // Update dropdown to match current effect
+                        const effectKey = data.effect_key;
+                        const dropdown = document.getElementById('effect-select');
+                        if (effectKey && dropdown.value !== effectKey) {
+                            dropdown.value = effectKey;
+                        }
                     }
                 })
                 .catch(err => {
@@ -399,13 +406,15 @@ def get_status():
     try:
         response = send_command('status')
         if response and response.get('status') == 'ok':
-            # Get effect name, fallback to key if name not available
-            effect_name = response.get('effect_name') or response.get('effect', 'Unknown')
+            # Get effect key and name
+            effect_key = response.get('effect', 'Unknown')
+            effect_name = response.get('effect_name') or effect_key
             state = 'PAUSED' if response.get('paused', False) else 'RUNNING'
 
             return jsonify({
                 'status': 'online',
                 'effect': effect_name,
+                'effect_key': effect_key,
                 'state': state,
                 'brightness': response.get('brightness', 100),
                 'speed': response.get('speed', 1.0),
