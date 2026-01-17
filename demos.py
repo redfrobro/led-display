@@ -1267,6 +1267,12 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
     # Load all config
     config = load_text_effect_config()
 
+    # Debug logging for font loading issues
+    logger.info(f"text_display called with font_name={font_name}, text={text}, scroll_speed={scroll_speed}, color_hue={color_hue}")
+    logger.info(f"Config loaded: {config}")
+    logger.info(f"__file__ = {__file__}")
+    logger.info(f"Project dir = {os.path.dirname(__file__)}")
+
     # Use provided values or fall back to config
     if text is None:
         text = config['text']
@@ -1294,6 +1300,7 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
 
     # Load font from fonts folder
     font_path = os.path.join(os.path.dirname(__file__), 'fonts', font_name)
+    logger.info(f"Font path: {font_path}, exists: {os.path.exists(font_path)}")
     try:
         font = ImageFont.load(font_path)
         logger.info(f"Loaded font: {font_name}")
@@ -1839,6 +1846,19 @@ class DaemonController:
                     # Validate value to prevent crashes
                     if not validate_effect_option(self.current_effect, key, value):
                         return {"status": "error", "message": f"Invalid value '{value}' for {key}. Must be positive."}
+
+                    # Special validation for font_name in text effect
+                    if self.current_effect == "text" and key == "font_name":
+                        font_path = os.path.join(os.path.dirname(__file__), 'fonts', value)
+                        if not os.path.exists(font_path):
+                            return {"status": "error", "message": f"Font file not found: {value}"}
+                        try:
+                            # Try to load the font to validate it works
+                            font = ImageFont.load(font_path)
+                            logger.info(f"Font validation passed: {value}")
+                        except Exception as e:
+                            logger.error(f"Font validation failed for {value}: {e}")
+                            return {"status": "error", "message": f"Font '{value}' cannot be loaded: {str(e)}"}
 
                     self.effect_options[self.current_effect][key] = value
 

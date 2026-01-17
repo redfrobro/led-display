@@ -782,6 +782,9 @@ def get_fonts():
         fonts_dir = os.path.join(os.path.dirname(__file__), 'fonts')
         if os.path.exists(fonts_dir):
             font_files = [f for f in os.listdir(fonts_dir) if f.endswith('.bdf')]
+            # Filter out known problematic fonts
+            problematic_fonts = ['tom-thumb.bdf']  # Requires companion .gif/.pbm/.png files
+            font_files = [f for f in font_files if f not in problematic_fonts]
             font_files.sort()
             return jsonify({'fonts': font_files})
     except Exception as e:
