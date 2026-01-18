@@ -106,6 +106,7 @@ The web interface provides:
 -p, --low-power         Low power mode: Pi Zero optimized effects (12 effects)
 --high-power            High power mode: Pi 3/4 effects only (10 effects)
 -e, --effects EFFECTS   Comma-separated effects (e.g., fireworks,matrix)
+--playlist NAME         Load custom playlist (e.g., my-favorites)
 -d, --duration SECS     Duration per effect (0 = forever, default: 8)
 -s, --shuffle           Randomize effect order
 -f, --frequency 1-10    Spawn rate for particle effects (default: 5)
@@ -143,6 +144,122 @@ python demos.py -f 10                # Max spawn frequency
 ### Night Mode Effects
 
 `matrix`, `sparkle`, `balls`, `lightning`, `fireworks`, `starfield`, `aurora`, `ripple`
+
+## Custom Playlists
+
+Create and manage custom effect sequences with per-effect parameters. Playlists are stored as JSON files in the `playlists/` directory.
+
+### Using Playlists
+
+```bash
+# List available playlists
+bin/led-playlist list
+
+# View playlist details
+bin/led-playlist show my-favorites
+
+# Run with custom playlist
+sudo python demos.py --playlist my-favorites
+
+# Run with built-in playlists
+sudo python demos.py --low-power    # Uses playlists/low-power.json
+sudo python demos.py --high-power   # Uses playlists/high-power.json
+sudo python demos.py --night        # Uses playlists/night.json
+```
+
+### Creating and Editing Playlists
+
+```bash
+# Create new playlist
+bin/led-playlist create my-favorites --description "My favorite effects"
+
+# Add effects with custom parameters
+bin/led-playlist add my-favorites fireworks --brightness 80 --frequency 8
+bin/led-playlist add my-favorites aurora --duration 15 --speed 2.0
+bin/led-playlist add my-favorites lightning --opt branches=true,color=240
+
+# Remove an effect
+bin/led-playlist remove my-favorites fireworks
+
+# Reorder effects
+bin/led-playlist reorder my-favorites aurora 0
+
+# Clone a playlist
+bin/led-playlist clone low-power my-low-power
+
+# Validate playlist
+bin/led-playlist validate my-favorites
+
+# Delete playlist
+bin/led-playlist delete my-favorites
+```
+
+### Playlist Management via Daemon
+
+```bash
+# Load playlist in running daemon
+bin/led-control load_playlist my-favorites
+
+# List available playlists
+bin/led-control list_playlists
+
+# Save current state as new playlist
+bin/led-control save_playlist my-session
+
+# Show currently loaded playlist
+bin/led-control current_playlist
+```
+
+### Built-in Playlists
+
+The following playlists are automatically created on first run:
+- **low-power** - Pi Zero optimized effects (12 effects)
+- **high-power** - Pi 3/4 high-performance effects (10 effects)
+- **night** - Dark effects suitable for nighttime (8 effects)
+- **all** - All available effects (22 effects)
+
+### Web Interface Playlist Features
+
+The web interface provides playlist management:
+- Select and load playlists from dropdown
+- View currently loaded playlist
+- Create new playlists
+- Edit playlist: add/remove effects, adjust per-effect parameters
+- Delete custom playlists (built-in playlists cannot be deleted)
+
+### Playlist File Format
+
+Playlists are stored as JSON files in `playlists/` directory:
+
+```json
+{
+  "name": "my-favorites",
+  "description": "My favorite effects",
+  "version": "1.0",
+  "created": "2026-01-17T00:00:00Z",
+  "modified": "2026-01-17T00:00:00Z",
+  "effects": [
+    {
+      "key": "fireworks",
+      "duration": 8,
+      "params": {
+        "brightness": 80,
+        "frequency": 7,
+        "speed": 1.5
+      },
+      "options": {
+        "particles": 50,
+        "gravity": 0.15
+      }
+    }
+  ]
+}
+```
+
+**Per-effect parameters:**
+- `duration`: Effect duration in seconds (0 = use global default)
+- `params`: Global parameters (brightness: 0-100, frequency: 1-10, speed: 0.1-5.0)
+- `options`: Effect-specific options (see `python demos.py --list-opts`)
 
 ## Dependencies
 

@@ -29,6 +29,95 @@ options.parallel = 1
 # Matrix will be initialized later (after fork in daemon mode, or now in normal mode)
 matrix = None
 
+def get_network_info():
+    """Get network information: IP addresses and hostnames"""
+    import subprocess
+    import re
+
+    info = []
+
+    # Get hostname
+    try:
+        hostname = socket.gethostname()
+        info.append(f"Host: {hostname}")
+        info.append(f"  pi.local: http://{hostname}.local")
+    except Exception as e:
+        logger.warning(f"Could not get hostname: {e}")
+
+    # Get IP addresses using multiple methods
+    ip_addresses = []
+
+    # Method 1: socket.gethostbyname_ex
+    try:
+        hostname = socket.gethostname()
+        _, _, ip_list = socket.gethostbyname_ex(hostname)
+        ip_addresses.extend(ip_list)
+    except Exception as e:
+        logger.debug(f"Could not get IP via gethostbyname_ex: {e}")
+
+    # Method 2: socket.getaddrinfo
+    try:
+        for family in (socket.AF_INET, socket.AF_INET6):
+            try:
+                addrs = socket.getaddrinfo(hostname, None, family, socket.SOCK_DGRAM)
+                for addr in addrs:
+                    ip = addr[4][0]
+                    if ip not in ip_addresses and not ip.startswith('127.'):
+                        ip_addresses.append(ip)
+            except:
+                pass
+    except Exception as e:
+        logger.debug(f"Could not get IP via getaddrinfo: {e}")
+
+    # Method 3: Try ip command (Linux/Raspberry Pi)
+    try:
+        result = subprocess.run(['ip', 'addr', 'show'], capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            # Parse output for inet addresses (skip 127.x.x.x)
+            lines = result.stdout.split('\n')
+            for line in lines:
+                match = re.search(r'inet\s+(\d+\.\d+\.\d+\.\d+)/', line)
+                if match:
+                    ip = match.group(1)
+                    if not ip.startswith('127.') and ip not in ip_addresses:
+                        ip_addresses.append(ip)
+    except (subprocess.SubprocessError, FileNotFoundError, TimeoutError) as e:
+        logger.debug(f"Could not get IP via ip command: {e}")
+
+    # Method 4: Try ifconfig command (older systems)
+    try:
+        result = subprocess.run(['ifconfig', '-a'], capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            # Parse ifconfig output
+            lines = result.stdout.split('\n')
+            for line in lines:
+                match = re.search(r'inet\s+(\d+\.\d+\.\d+\.\d+)', line)
+                if match:
+                    ip = match.group(1)
+                    if not ip.startswith('127.') and ip not in ip_addresses:
+                        ip_addresses.append(ip)
+    except (subprocess.SubprocessError, FileNotFoundError, TimeoutError) as e:
+        logger.debug(f"Could not get IP via ifconfig: {e}")
+
+    # Filter and deduplicate IPs
+    unique_ips = []
+    for ip in ip_addresses:
+        if ip not in unique_ips and not ip.startswith('127.'):
+            unique_ips.append(ip)
+
+    # Add IP addresses to info
+    for ip in unique_ips:
+        info.append(f"IP: {ip}")
+        info.append(f"  http://{ip}")
+
+    # If no IPs found, add a message
+    if not unique_ips and not info:
+        info.append("No network found")
+        info.append("Connect to network")
+
+    return info
+
+
 def init_matrix(for_daemon=False):
     """Initialize or reinitialize the matrix"""
     global matrix
@@ -1254,9 +1343,10 @@ def save_text_effect_option(key, value):
     except Exception as e:
         logger.error(f"Failed to save text effect option: {e}")
 
-def text_display(duration=8, frequency=5, text=None, font_name=None,
+def text_display(duration=0, frequency=5, text=None, font_name=None,
                  scroll_speed=None, color_hue=None, check_interrupt=None, **kwargs):
     """Display scrolling or static text on the matrix
+    Note: duration is now respected (0 = run forever, default: 0). Frequency parameter is ignored.
 
     Args:
         text: Text to display (if None, loads from config file)
@@ -1329,8 +1419,39 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
     # Create a canvas for drawing
     canvas = matrix.CreateFrameCanvas()
 
-    # Measure text width
-    text_width = graphics.DrawText(canvas, font, 0, 0, text_color, text)
+    # Helper function to draw text with tight spacing (1 pixel between characters)
+    def draw_text_tight(canvas, font, x, y, color, text):
+        """Draw text with 1 pixel spacing between characters, returns total width drawn"""
+        total_width = 0
+        spacing_reduce = 1  # Reduce spacing by 1 pixel between characters
+        for i, char in enumerate(text):
+            # Draw single character and get its width
+            char_width = graphics.DrawText(canvas, font, x + total_width, y, color, char)
+            # Remove 1 pixel spacing after each character except the last
+            if i < len(text) - 1 and char_width > spacing_reduce:
+                total_width += char_width - spacing_reduce
+            else:
+                total_width += char_width
+        return total_width
+
+    # Helper to measure text width with tight spacing (without drawing)
+    def measure_text_tight(font, text):
+        """Measure text width with 1 pixel spacing between characters"""
+        # Create a temporary canvas for measuring (not displayed)
+        temp_canvas = matrix.CreateFrameCanvas()
+        total_width = 0
+        spacing_reduce = 1  # Reduce spacing by 1 pixel between characters
+        for i, char in enumerate(text):
+            # Measure single character width
+            char_width = graphics.DrawText(temp_canvas, font, 0, 0, graphics.Color(0,0,0), char)
+            if i < len(text) - 1 and char_width > spacing_reduce:
+                total_width += char_width - spacing_reduce
+            else:
+                total_width += char_width
+        return total_width
+
+    # Measure text width with tight spacing
+    text_width = measure_text_tight(font, text)
 
     # Calculate vertical position (try to center)
     # Use font.height if available, otherwise estimate
@@ -1353,8 +1474,11 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
         # Scrolling mode
         total_scroll_width = text_width + COLS
 
-        while time.time() - start_time < duration:
+        while True:
             if check_interrupt and check_interrupt():
+                return
+            # Check duration (0 means run forever)
+            if duration > 0 and time.time() - start_time >= duration:
                 return
 
             # Clear canvas
@@ -1363,8 +1487,8 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
             # Calculate x position for scrolling (right to left)
             x_pos = COLS - scroll_offset
 
-            # Draw text
-            graphics.DrawText(canvas, font, x_pos, y_pos, text_color, text)
+            # Draw text with tight spacing
+            draw_text_tight(canvas, font, x_pos, y_pos, text_color, text)
 
             # Swap buffer
             canvas = matrix.SwapOnVSync(canvas)
@@ -1379,14 +1503,17 @@ def text_display(duration=8, frequency=5, text=None, font_name=None,
         # Static centered mode
         x_pos = (COLS - text_width) // 2
 
-        # Clear canvas and draw text once
+        # Clear canvas and draw text once with tight spacing
         canvas.Clear()
-        graphics.DrawText(canvas, font, x_pos, y_pos, text_color, text)
+        draw_text_tight(canvas, font, x_pos, y_pos, text_color, text)
         canvas = matrix.SwapOnVSync(canvas)
 
         # Just wait for duration
-        while time.time() - start_time < duration:
+        while True:
             if check_interrupt and check_interrupt():
+                return
+            # Check duration (0 means run forever)
+            if duration > 0 and time.time() - start_time >= duration:
                 return
             time.sleep(0.1)
 
@@ -1530,9 +1657,11 @@ def validate_effect_option(effect_name, key, value):
         return False
     if key == 'sources' and value > 10:   # Reasonable limit
         return False
+    if key == 'scroll_speed' and value > 500:  # Maximum scroll speed
+        return False
 
     # Positive-only parameters (can be zero)
-    if key in ['particles', 'density', 'drop_rate', 'spawn_rate']:
+    if key in ['particles', 'density', 'drop_rate', 'spawn_rate', 'scroll_speed']:
         if value < 0:
             return False
 
@@ -1608,6 +1737,12 @@ class DaemonController:
         # Playback mode: 'playlist' or 'single'
         self.playback_mode = 'playlist'  # Default to playlist mode
 
+        # Playlist state
+        self.current_playlist_name = None  # Track loaded playlist
+        self.playlist_data = None  # Full playlist data
+        self.effect_durations = {}  # Per-effect duration overrides
+        self.effect_params = {}  # Per-effect brightness/frequency/speed
+
         # Web server options
         self.webserver_enabled = webserver_enabled
         self.webserver_port = webserver_port
@@ -1643,6 +1778,10 @@ class DaemonController:
     def effect_worker(self):
         """Run effects in a loop"""
         logger.info("Effect worker thread started")
+
+        # Display network info on startup
+        display_startup_info(duration=5)
+
         loop_count = 0
 
         try:
@@ -1672,18 +1811,38 @@ class DaemonController:
                         self.skip_to_next = False
                         self.skip_to_prev = False
                         self.jump_to_effect = False
+
+                        # Get per-effect parameters from playlist (if set)
+                        # Special case: text effect runs forever in single mode
+                        if key == "text" and mode == 'single':
+                            effect_duration = 0
+                        else:
+                            effect_duration = self.effect_durations.get(key, self.args.duration)
+                        effect_params = self.effect_params.get(key, {})
+                        effect_brightness = effect_params.get('brightness') if effect_params.get('brightness') is not None else self.brightness
+                        effect_frequency = effect_params.get('frequency') if effect_params.get('frequency') is not None else self.frequency
+                        effect_speed = effect_params.get('speed') if effect_params.get('speed') is not None else self.speed
+
                         # Get effect options while holding lock
                         opts = get_effect_options(key)
+                        # Merge playlist options with current effect_options
+                        playlist_opts = effect_params.get('options', {})
+                        opts.update(playlist_opts)
                         opts.update(self.effect_options.get(key, {}))
+
+                        # Add speed to opts if the effect supports it
+                        # (not all effects have speed as a parameter, so pass via **kwargs)
+                        if 'speed' not in opts:
+                            opts['speed'] = effect_speed
 
                     name, func, _ = DEMOS[key]
                     logger.info(f"Starting effect '{key}': {name}")
 
                     # Run effect with interrupt checking
-                    duration = self.args.duration if self.args.duration > 0 else 999999
+                    duration = effect_duration if effect_duration > 0 else 999999
                     func(
                         duration=duration,
-                        frequency=self.frequency,
+                        frequency=effect_frequency,
                         check_interrupt=self.should_interrupt,
                         **opts
                     )
@@ -1743,7 +1902,9 @@ class DaemonController:
                     "frequency": self.frequency,
                     "brightness": self.brightness,
                     "speed": self.speed,
-                    "playback_mode": self.playback_mode
+                    "playback_mode": self.playback_mode,
+                    "playlist": self.current_playlist_name,
+                    "playlist_effect_count": len(self.effect_keys) if self.current_playlist_name else None
                 }
 
             elif command == "next":
@@ -1886,6 +2047,131 @@ class DaemonController:
                     return {"status": "ok", "message": f"Set {key}={value} for {self.current_effect}"}
                 else:
                     return {"status": "error", "message": "No effect currently running"}
+
+            elif command == "load_playlist":
+                if not arg:
+                    return {"status": "error", "message": "Missing playlist name"}
+
+                try:
+                    import playlist_manager
+
+                    # Load playlist
+                    playlist_data = playlist_manager.load_playlist(arg)
+
+                    # Update effect list
+                    self.effect_keys = [e['key'] for e in playlist_data['effects']]
+
+                    # Store playlist data and name
+                    self.playlist_data = playlist_data
+                    self.current_playlist_name = arg
+
+                    # Extract per-effect parameters
+                    self.effect_durations = {}
+                    self.effect_params = {}
+
+                    for effect in playlist_data['effects']:
+                        key = effect['key']
+
+                        # Store duration
+                        if 'duration' in effect and effect['duration'] > 0:
+                            self.effect_durations[key] = effect['duration']
+
+                        # Store params (brightness, frequency, speed) and options
+                        if 'params' in effect or 'options' in effect:
+                            self.effect_params[key] = {
+                                'brightness': effect.get('params', {}).get('brightness'),
+                                'frequency': effect.get('params', {}).get('frequency'),
+                                'speed': effect.get('params', {}).get('speed'),
+                                'options': effect.get('options', {})
+                            }
+
+                    # Reset to playlist mode and interrupt current effect
+                    self.playback_mode = 'playlist'
+                    self.effect_index = 0
+                    self.skip_to_next = True
+
+                    return {
+                        "status": "ok",
+                        "message": f"Loaded playlist '{arg}' with {len(self.effect_keys)} effects",
+                        "effect_count": len(self.effect_keys)
+                    }
+
+                except FileNotFoundError:
+                    return {"status": "error", "message": f"Playlist '{arg}' not found"}
+                except ValueError as e:
+                    return {"status": "error", "message": f"Invalid playlist: {str(e)}"}
+                except Exception as e:
+                    return {"status": "error", "message": f"Error loading playlist: {str(e)}"}
+
+            elif command == "list_playlists":
+                try:
+                    import playlist_manager
+                    playlists = playlist_manager.list_playlists()
+                    return {"status": "ok", "playlists": playlists}
+                except Exception as e:
+                    return {"status": "error", "message": f"Error listing playlists: {str(e)}"}
+
+            elif command == "save_playlist":
+                if not arg:
+                    return {"status": "error", "message": "Missing playlist name"}
+
+                try:
+                    import playlist_manager
+
+                    # Create playlist from current state
+                    playlist_data = playlist_manager.create_playlist(arg, "Saved from daemon")
+
+                    # Add current effects with their parameters
+                    for key in self.effect_keys:
+                        effect = {
+                            'key': key,
+                            'duration': self.effect_durations.get(key, self.args.duration),
+                            'params': {},
+                            'options': {}
+                        }
+
+                        # Add per-effect params if they exist
+                        if key in self.effect_params:
+                            params = self.effect_params[key]
+                            if params.get('brightness') is not None:
+                                effect['params']['brightness'] = params['brightness']
+                            if params.get('frequency') is not None:
+                                effect['params']['frequency'] = params['frequency']
+                            if params.get('speed') is not None:
+                                effect['params']['speed'] = params['speed']
+                            if params.get('options'):
+                                effect['options'] = params['options']
+
+                        # Add effect-specific options from effect_options
+                        if key in self.effect_options:
+                            effect['options'].update(self.effect_options[key])
+
+                        playlist_data['effects'].append(effect)
+
+                    # Save playlist
+                    playlist_manager.save_playlist(arg, playlist_data)
+
+                    return {
+                        "status": "ok",
+                        "message": f"Saved playlist '{arg}' with {len(self.effect_keys)} effects"
+                    }
+
+                except Exception as e:
+                    return {"status": "error", "message": f"Error saving playlist: {str(e)}"}
+
+            elif command == "current_playlist":
+                if self.current_playlist_name:
+                    return {
+                        "status": "ok",
+                        "playlist": self.current_playlist_name,
+                        "effect_count": len(self.effect_keys)
+                    }
+                else:
+                    return {
+                        "status": "ok",
+                        "playlist": None,
+                        "message": "No playlist loaded"
+                    }
 
             else:
                 return {"status": "error", "message": f"Unknown command: {command}"}
@@ -2115,6 +2401,8 @@ Effect-specific options (use --list-opts to see all):
                         help="Effect-specific options (e.g., 'balls:count=8,size=2;fireworks:particles=50')")
     parser.add_argument("-e", "--effects", type=str, default=None,
                         help="Comma-separated list of effects to run (e.g., fireworks,matrix,starfield)")
+    parser.add_argument("--playlist", type=str, default=None,
+                        help="Load custom playlist (e.g., 'my-custom')")
     parser.add_argument("-d", "--duration", type=float, default=8,
                         help="Duration of each effect in seconds (0 = run forever, default: 8)")
     parser.add_argument("-s", "--shuffle", action="store_true",
@@ -2151,6 +2439,41 @@ def setup_logging(verbose):
         logger.info("Verbose logging enabled")
 
 
+def display_startup_info(duration=5):
+    """Display network information on startup"""
+    try:
+        # Get network info
+        network_info = get_network_info()
+        if not network_info:
+            network_info = ["No network info"]
+
+        # Join with newlines for scrolling display
+        text = "\n".join(network_info)
+        logger.info(f"Displaying startup network info")
+
+        # Use text_display with default parameters
+        # Get default text effect options
+        config = load_text_effect_config()
+        font_name = config.get('font_name', '6x10.bdf')
+        scroll_speed = config.get('scroll_speed', 2.0)
+        color_hue = config.get('color_hue', 200)
+
+        # Display for specified duration
+        if matrix:
+            # Call text_display directly
+            text_display(
+                duration=duration,
+                text=text,
+                font_name=font_name,
+                scroll_speed=scroll_speed,
+                color_hue=color_hue,
+                check_interrupt=lambda: False  # Don't allow interruption during startup
+            )
+            matrix.Clear()
+    except Exception as e:
+        logger.error(f"Failed to display startup info: {e}")
+        # Don't crash startup if display fails
+
 if __name__ == "__main__":
     args = parse_args()
     setup_logging(args.verbose)
@@ -2180,8 +2503,37 @@ if __name__ == "__main__":
         EFFECT_OPTIONS.update(parse_effect_opts(args.opts))
         logger.debug(f"Custom effect options: {EFFECT_OPTIONS}")
 
+    # Ensure playlists directory exists and migrate built-in playlists
+    import playlist_manager
+    playlists_dir = os.path.join(os.path.dirname(__file__), 'playlists')
+    if not os.path.exists(playlists_dir):
+        os.makedirs(playlists_dir)
+
+    # Check if built-in playlists exist, if not, create them
+    builtin_playlists = ['low-power', 'high-power', 'night', 'all']
+    missing_playlists = [p for p in builtin_playlists
+                         if not os.path.exists(os.path.join(playlists_dir, f'{p}.json'))]
+
+    if missing_playlists:
+        logger.info(f"Creating missing built-in playlists: {', '.join(missing_playlists)}")
+        playlist_manager.migrate_builtin_playlists()
+        logger.info("Built-in playlists created")
+
     # Determine which effects to run
-    if args.effects:
+    if args.playlist:
+        try:
+            import playlist_manager
+            playlist_data = playlist_manager.load_playlist(args.playlist)
+            effect_keys = [e['key'] for e in playlist_data['effects']]
+            logger.debug(f"Loaded playlist '{args.playlist}' with {len(effect_keys)} effects")
+        except FileNotFoundError:
+            print(f"Error: Playlist '{args.playlist}' not found")
+            print(f"Use 'bin/led-playlist list' to see available playlists")
+            sys.exit(1)
+        except ValueError as e:
+            print(f"Error: Invalid playlist '{args.playlist}': {e}")
+            sys.exit(1)
+    elif args.effects:
         effect_keys = [e.strip() for e in args.effects.split(",")]
         for key in effect_keys:
             if key not in DEMOS:
@@ -2189,13 +2541,37 @@ if __name__ == "__main__":
                 print(f"Use --list to see available effects")
                 sys.exit(1)
     elif args.low_power:
-        effect_keys = LOW_POWER_ORDER.copy()
+        try:
+            import playlist_manager
+            playlist_data = playlist_manager.load_playlist('low-power')
+            effect_keys = [e['key'] for e in playlist_data['effects']]
+        except (FileNotFoundError, ValueError):
+            # Fallback to hardcoded list if playlist doesn't exist
+            effect_keys = LOW_POWER_ORDER.copy()
     elif args.high_power:
-        effect_keys = HIGH_POWER_ORDER.copy()
+        try:
+            import playlist_manager
+            playlist_data = playlist_manager.load_playlist('high-power')
+            effect_keys = [e['key'] for e in playlist_data['effects']]
+        except (FileNotFoundError, ValueError):
+            # Fallback to hardcoded list if playlist doesn't exist
+            effect_keys = HIGH_POWER_ORDER.copy()
     elif args.night:
-        effect_keys = NIGHT_MODE.copy()
+        try:
+            import playlist_manager
+            playlist_data = playlist_manager.load_playlist('night')
+            effect_keys = [e['key'] for e in playlist_data['effects']]
+        except (FileNotFoundError, ValueError):
+            # Fallback to hardcoded list if playlist doesn't exist
+            effect_keys = NIGHT_MODE.copy()
     else:
-        effect_keys = DEFAULT_ORDER.copy()
+        try:
+            import playlist_manager
+            playlist_data = playlist_manager.load_playlist('all')
+            effect_keys = [e['key'] for e in playlist_data['effects']]
+        except (FileNotFoundError, ValueError):
+            # Fallback to hardcoded list if playlist doesn't exist
+            effect_keys = DEFAULT_ORDER.copy()
 
     if args.shuffle:
         shuffle(effect_keys)
@@ -2263,6 +2639,9 @@ if __name__ == "__main__":
         if args.loops > 0:
             print(f"Loops: {args.loops}")
         print()
+
+        # Display network info on startup
+        display_startup_info(duration=5)
 
         try:
             loop_count = 0

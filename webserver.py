@@ -9,7 +9,7 @@ import sys
 import socket
 import json
 import argparse
-from flask import Flask, render_template_string, jsonify, request
+from flask import Flask, render_template, jsonify, request
 
 # Import led_control functions
 sys.path.insert(0, os.path.dirname(__file__))
@@ -17,718 +17,11 @@ from led_control import send_command, is_daemon_running, SOCKET_PATH
 
 app = Flask(__name__)
 
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>LED Matrix Control</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #1a1a1a;
-            color: #e0e0e0;
-        }
-        h1 {
-            color: #00ff88;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .status-box {
-            background: #2a2a2a;
-            border: 2px solid #00ff88;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #404040;
-        }
-        .status-item:last-child {
-            border-bottom: none;
-        }
-        .status-label {
-            font-weight: bold;
-            color: #00ff88;
-        }
-        .status-value {
-            color: #ffffff;
-        }
-        .control-section {
-            background: #2a2a2a;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .control-section h2 {
-            color: #00ff88;
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 1.3em;
-        }
-        .button-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        button {
-            background: #00ff88;
-            color: #000;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-        button:hover {
-            background: #00cc6a;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 255, 136, 0.3);
-        }
-        button:active {
-            transform: translateY(0);
-        }
-        button.danger {
-            background: #ff4444;
-            color: #fff;
-        }
-        button.danger:hover {
-            background: #cc0000;
-        }
-        .slider-container {
-            margin: 15px 0;
-        }
-        .slider-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            color: #00ff88;
-        }
-        input[type="range"] {
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: #404040;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #00ff88;
-            cursor: pointer;
-        }
-        input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #00ff88;
-            cursor: pointer;
-            border: none;
-        }
-        .effect-selector {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 2px solid #00ff88;
-            background: #1a1a1a;
-            color: #e0e0e0;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .message {
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            display: none;
-        }
-        .message.success {
-            background: #00ff8844;
-            border: 1px solid #00ff88;
-            display: block;
-        }
-        .message.error {
-            background: #ff444444;
-            border: 1px solid #ff4444;
-            display: block;
-        }
-        .offline {
-            color: #ff4444;
-            text-align: center;
-            padding: 20px;
-            font-size: 1.2em;
-        }
-        .debouncing {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-    </style>
-</head>
-<body>
-    <h1>🎨 LED Matrix Control</h1>
-
-    <div id="offline-warning" class="offline" style="display: none;">
-        ⚠️ Daemon is not running. Start it with: sudo python demos.py --daemon
-    </div>
-
-    <div id="controls" style="display: none;">
-        <div class="status-box">
-            <h2 style="margin-top: 0; color: #00ff88;">Status</h2>
-            <div class="status-item">
-                <span class="status-label">Current Effect:</span>
-                <span class="status-value" id="current-effect">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">State:</span>
-                <span class="status-value" id="state">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Brightness:</span>
-                <span class="status-value" id="brightness-display">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Speed:</span>
-                <span class="status-value" id="speed-display">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Frequency:</span>
-                <span class="status-value" id="frequency-display">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Mode:</span>
-                <span class="status-value" id="mode-display">-</span>
-            </div>
-        </div>
-
-        <div class="control-section">
-            <h2>Effect Control</h2>
-            <div class="button-grid">
-                <button onclick="sendCommand('prev')">⬅️ Previous</button>
-                <button onclick="sendCommand('next')">Next ➡️</button>
-                <button onclick="sendCommand('pause')">⏸️ Pause</button>
-                <button onclick="sendCommand('resume')">▶️ Resume</button>
-            </div>
-
-            <select id="effect-select" class="effect-selector" onchange="selectEffect()">
-                <option value="">Select Effect...</option>
-            </select>
-
-            <div class="button-grid" style="margin-top: 15px;">
-                <button onclick="sendCommand('playlist')">🎵 Playlist Mode</button>
-                <button onclick="sendCommand('set', 'text')">📝 Text Mode</button>
-            </div>
-        </div>
-
-        <div id="effect-options-section" class="control-section" style="display: none;">
-            <h2>Effect Options</h2>
-            <div id="effect-options-container">
-                <!-- Effect-specific options will be dynamically loaded here -->
-            </div>
-        </div>
-
-        <div class="control-section">
-            <h2>Settings</h2>
-
-            <div class="slider-container">
-                <div class="slider-label">
-                    <span>Brightness</span>
-                    <span id="brightness-value">50</span>
-                </div>
-                <input type="range" id="brightness" min="0" max="100" value="50"
-                       oninput="updateSlider('brightness')"
-                       onchange="setBrightness()">
-            </div>
-
-            <div class="slider-container">
-                <div class="slider-label">
-                    <span>Speed</span>
-                    <span id="speed-value">1.0</span>
-                </div>
-                <input type="range" id="speed" min="1" max="50" value="10"
-                       oninput="updateSlider('speed')"
-                       onchange="setSpeed()">
-            </div>
-
-            <div class="slider-container">
-                <div class="slider-label">
-                    <span>Frequency</span>
-                    <span id="frequency-value">5</span>
-                </div>
-                <input type="range" id="frequency" min="1" max="10" value="5"
-                       oninput="updateSlider('frequency')"
-                       onchange="setFrequency()">
-            </div>
-        </div>
-
-        <div class="control-section">
-            <h2>Daemon Control</h2>
-            <div class="button-grid">
-                <button class="danger" onclick="sendCommand('stop')">⏹️ Stop Daemon</button>
-            </div>
-        </div>
-
-        <div id="message" class="message"></div>
-    </div>
-
-    <script>
-        let effectList = [];
-        let currentEffectKey = null;
-        let debounceTimers = {};
-        let isUpdatingFromStatus = false;
-        let lastSentValues = {
-            brightness: 50,
-            speed: 1.0,
-            frequency: 5
-        };
-
-        // Debounce function to prevent rapid firing of commands
-        function debounce(func, wait) {
-            return function(...args) {
-                const context = this;
-                clearTimeout(debounceTimers[func.name]);
-                debounceTimers[func.name] = setTimeout(() => {
-                    func.apply(context, args);
-                }, wait);
-            };
-        }
-
-        // Throttle function for slider updates
-        function throttle(func, wait) {
-            let inThrottle;
-            return function(...args) {
-                const context = this;
-                if (!inThrottle) {
-                    func.apply(context, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, wait);
-                }
-            };
-        }
-
-        function updateStatus() {
-            fetch('/api/status')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.status === 'offline') {
-                        document.getElementById('offline-warning').style.display = 'block';
-                        document.getElementById('controls').style.display = 'none';
-                        return;
-                    }
-                    
-                    document.getElementById('offline-warning').style.display = 'none';
-                    document.getElementById('controls').style.display = 'block';
-
-                    // Prevent slider updates from triggering commands while we update from status
-                    isUpdatingFromStatus = true;
-
-                    // Update display values
-                    document.getElementById('current-effect').textContent = data.effect || '-';
-                    document.getElementById('state').textContent = data.state || '-';
-                    document.getElementById('brightness-display').textContent = data.brightness || '-';
-                    document.getElementById('speed-display').textContent = data.speed || '-';
-                    document.getElementById('frequency-display').textContent = data.frequency || '-';
-
-                    // Update mode display
-                    const mode = data.mode || 'playlist';
-                    document.getElementById('mode-display').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
-
-                    // Update dropdown to match current effect
-                    const effectKey = data.effect_key;
-                    const dropdown = document.getElementById('effect-select');
-                    if (effectKey && dropdown.value !== effectKey) {
-                        dropdown.value = effectKey;
-                    }
-
-                    // Only update sliders if values differ significantly from what we last sent
-                    const brightness = parseInt(data.brightness) || 50;
-                    const speed = parseFloat(data.speed) || 1.0;
-                    const frequency = parseInt(data.frequency) || 5;
-
-                    if (Math.abs(brightness - lastSentValues.brightness) > 5) {
-                        document.getElementById('brightness').value = brightness;
-                        document.getElementById('brightness-value').textContent = brightness;
-                        lastSentValues.brightness = brightness;
-                    }
-
-                    if (Math.abs(speed - lastSentValues.speed) > 0.5) {
-                        document.getElementById('speed').value = Math.round(speed * 10);
-                        document.getElementById('speed-value').textContent = speed.toFixed(1);
-                        lastSentValues.speed = speed;
-                    }
-
-                    if (Math.abs(frequency - lastSentValues.frequency) > 1) {
-                        document.getElementById('frequency').value = frequency;
-                        document.getElementById('frequency-value').textContent = frequency;
-                        lastSentValues.frequency = frequency;
-                    }
-
-                    // Load effect options if effect changed or mode is single
-                    if (mode === 'single' && effectKey && effectKey !== currentEffectKey) {
-                        loadEffectOptions(effectKey);
-                        currentEffectKey = effectKey;
-                    } else if (mode !== 'single') {
-                        // Hide effect options in playlist mode
-                        document.getElementById('effect-options-section').style.display = 'none';
-                        currentEffectKey = null;
-                    }
-
-                    // Re-enable slider updates
-                    setTimeout(() => {
-                        isUpdatingFromStatus = false;
-                    }, 100);
-                })
-                .catch(err => {
-                    console.error('Status update failed:', err);
-                    // If we can't reach the server, show offline warning
-                    document.getElementById('offline-warning').style.display = 'block';
-                    document.getElementById('controls').style.display = 'none';
-                });
-        }
-
-        function loadEffects() {
-            fetch('/api/effects')
-                .then(response => response.json())
-                .then(data => {
-                    effectList = data.effects || [];
-                    const select = document.getElementById('effect-select');
-                    select.innerHTML = '<option value="">Select Effect...</option>';
-                    effectList.forEach(effect => {
-                        const option = document.createElement('option');
-                        option.value = effect;
-                        option.textContent = effect;
-                        select.appendChild(option);
-                    });
-                });
-        }
-
-        function sendCommand(cmd, args = null) {
-            const payload = args ? {command: cmd, args: args} : {command: cmd};
-            
-            // Show loading state
-            const messageDiv = document.getElementById('message');
-            messageDiv.textContent = 'Sending command...';
-            messageDiv.className = 'message';
-            messageDiv.style.display = 'block';
-
-            fetch('/api/command', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    messageDiv.textContent = data.message || 'Command sent successfully';
-                    messageDiv.className = 'message success';
-                    setTimeout(updateStatus, 300); // Wait a bit before updating status
-                } else {
-                    messageDiv.textContent = data.message || 'Command failed';
-                    messageDiv.className = 'message error';
-                }
-                setTimeout(() => {
-                    messageDiv.style.display = 'none';
-                }, 3000);
-            })
-            .catch(err => {
-                messageDiv.textContent = 'Command failed: ' + err.message;
-                messageDiv.className = 'message error';
-                setTimeout(() => {
-                    messageDiv.style.display = 'none';
-                }, 3000);
-                console.error('Command error:', err);
-            });
-        }
-
-        // Debounced version of sendCommand for sliders
-        const debouncedSendCommand = debounce(sendCommand, 300);
-
-        function selectEffect() {
-            const effect = document.getElementById('effect-select').value;
-            if (effect) {
-                sendCommand('set', effect);
-            }
-        }
-
-        function updateSlider(type) {
-            if (isUpdatingFromStatus) return;
-            
-            const slider = document.getElementById(type);
-            const value = slider.value;
-            const valueSpan = document.getElementById(type + '-value');
-            
-            if (type === 'speed') {
-                const speedValue = (value / 10).toFixed(1);
-                valueSpan.textContent = speedValue;
-                lastSentValues.speed = parseFloat(speedValue);
-            } else {
-                valueSpan.textContent = value;
-                if (type === 'brightness') {
-                    lastSentValues.brightness = parseInt(value);
-                } else if (type === 'frequency') {
-                    lastSentValues.frequency = parseInt(value);
-                }
-            }
-        }
-
-        function setBrightness() {
-            if (isUpdatingFromStatus) return;
-            const value = document.getElementById('brightness').value;
-            debouncedSendCommand('brightness', value);
-        }
-
-        function setSpeed() {
-            if (isUpdatingFromStatus) return;
-            const value = (document.getElementById('speed').value / 10).toFixed(1);
-            debouncedSendCommand('speed', value);
-        }
-
-        function setFrequency() {
-            if (isUpdatingFromStatus) return;
-            const value = document.getElementById('frequency').value;
-            debouncedSendCommand('frequency', value);
-        }
-
-        function loadEffectOptions(effectKey) {
-            fetch(`/api/effect/${effectKey}/options`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.options || data.options.length === 0) {
-                        document.getElementById('effect-options-section').style.display = 'none';
-                        return;
-                    }
-
-                    document.getElementById('effect-options-section').style.display = 'block';
-                    const container = document.getElementById('effect-options-container');
-                    container.innerHTML = '';
-
-                    data.options.forEach(option => {
-                        const optDiv = document.createElement('div');
-                        optDiv.className = 'slider-container';
-
-                        if (option.type === 'boolean') {
-                            optDiv.innerHTML = `
-                                <div class="slider-label">
-                                    <span>${option.description}</span>
-                                    <span id="${option.key}-value">${option.default ? 'On' : 'Off'}</span>
-                                </div>
-                                <button id="${option.key}-toggle" onclick="toggleEffectOption('${option.key}')"
-                                        style="width: 100%;">${option.default ? 'On' : 'Off'}</button>
-                            `;
-                        } else if (option.type === 'enum') {
-                            // Dropdown for enum types (e.g., font selection)
-                            optDiv.innerHTML = `
-                                <div class="slider-label">
-                                    <span>${option.description}</span>
-                                </div>
-                                <select id="${option.key}" class="effect-selector" onchange="setEnumEffectOption('${option.key}')">
-                                    <option value="">Loading...</option>
-                                </select>
-                            `;
-                            // Populate dropdown based on the key
-                            if (option.key === 'font_name') {
-                                fetch('/api/fonts')
-                                    .then(response => response.json())
-                                    .then(fontData => {
-                                        const select = document.getElementById(option.key);
-                                        select.innerHTML = '';
-                                        fontData.fonts.forEach(font => {
-                                            const opt = document.createElement('option');
-                                            opt.value = font;
-                                            opt.textContent = font;
-                                            if (font === option.default) {
-                                                opt.selected = true;
-                                            }
-                                            select.appendChild(opt);
-                                        });
-                                    })
-                                    .catch(err => {
-                                        console.error('Failed to load fonts:', err);
-                                        const select = document.getElementById(option.key);
-                                        select.innerHTML = '<option value="6x10.bdf">6x10.bdf</option>';
-                                    });
-                            }
-                        } else if (option.type === 'number') {
-                            // Determine appropriate min/max based on default value
-                            let min = 0;
-                            let max = 100;
-                            let step = 1;
-
-                            if (typeof option.default === 'number') {
-                                if (option.default <= 1) {
-                                    min = 0;
-                                    max = 1;
-                                    step = 0.1;
-                                } else if (option.default <= 10) {
-                                    min = 0;
-                                    max = Math.max(20, option.default * 2);
-                                } else if (option.default <= 100) {
-                                    min = 0;
-                                    max = Math.max(200, option.default * 2);
-                                } else {
-                                    min = 0;
-                                    max = Math.max(500, option.default * 2);
-                                }
-
-                                // Special handling for known option ranges
-                                if (option.key === 'intensity' || option.key === 'cooling') {
-                                    min = 1;
-                                    max = 10;
-                                } else if (option.key === 'frequency') {
-                                    min = 1;
-                                    max = 10;
-                                } else if (option.key === 'speed') {
-                                    min = 0.1;
-                                    max = 5.0;
-                                    step = 0.1;
-                                } else if (option.key === 'saturation') {
-                                    min = 0;
-                                    max = 1;
-                                    step = 0.1;
-                                } else if (option.key === 'gravity') {
-                                    min = 0.01;
-                                    max = 0.5;
-                                    step = 0.01;
-                                } else if (option.key === 'color_hue') {
-                                    // Color hue uses full 0-360 range
-                                    min = 0;
-                                    max = 360;
-                                    step = 1;
-                                }
-                            }
-
-                            optDiv.innerHTML = `
-                                <div class="slider-label">
-                                    <span>${option.description}</span>
-                                    <span id="${option.key}-value">${option.default}</span>
-                                </div>
-                                <input type="range" id="${option.key}"
-                                       min="${min}" max="${max}" step="${step}" value="${option.default}"
-                                       oninput="updateEffectOption('${option.key}')"
-                                       onchange="setEffectOption('${option.key}')">
-                            `;
-                        } else if (option.type === 'text') {
-                            optDiv.innerHTML = `
-                                <div class="slider-label">
-                                    <span>${option.description}</span>
-                                </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <input type="text" id="${option.key}" value="${option.default}"
-                                           style="flex: 1; padding: 10px; border-radius: 5px; border: 2px solid #00ff88; background: #1a1a1a; color: #e0e0e0; font-size: 14px;"
-                                           placeholder="Enter text to display"
-                                           onkeypress="if(event.key==='Enter') setTextEffectOption('${option.key}')">
-                                    <button onclick="setTextEffectOption('${option.key}')"
-                                            style="padding: 10px 20px; min-width: 100px;">
-                                        💾 Save
-                                    </button>
-                                </div>
-                            `;
-                        }
-                        container.appendChild(optDiv);
-                    });
-                })
-                .catch(err => {
-                    console.error('Failed to load effect options:', err);
-                    document.getElementById('effect-options-section').style.display = 'none';
-                });
-        }
-
-        function updateEffectOption(key) {
-            const value = document.getElementById(key).value;
-            document.getElementById(key + '-value').textContent = value;
-        }
-
-        function setEffectOption(key) {
-            if (isUpdatingFromStatus) return;
-            const value = document.getElementById(key).value;
-            debouncedSendCommand('opt', `${key}=${value}`);
-        }
-
-        function setTextEffectOption(key) {
-            if (isUpdatingFromStatus) return;
-            const value = document.getElementById(key).value;
-            if (!value.trim()) {
-                showMessage('Please enter some text', 'error');
-                return;
-            }
-            // Show immediate feedback
-            showMessage('Saving text...', 'success');
-            sendCommand('opt', `${key}=${value}`);
-        }
-
-        function setEnumEffectOption(key) {
-            if (isUpdatingFromStatus) return;
-            const value = document.getElementById(key).value;
-            if (!value) {
-                showMessage('Please select a value', 'error');
-                return;
-            }
-            // Show immediate feedback
-            showMessage(`Updating ${key}...`, 'success');
-            sendCommand('opt', `${key}=${value}`);
-        }
-
-        function toggleEffectOption(key) {
-            if (isUpdatingFromStatus) return;
-            const button = document.getElementById(key + '-toggle');
-            const valueSpan = document.getElementById(key + '-value');
-            const currentValue = button.textContent === 'On';
-            const newValue = !currentValue;
-
-            button.textContent = newValue ? 'On' : 'Off';
-            valueSpan.textContent = newValue ? 'On' : 'Off';
-            sendCommand('opt', `${key}=${newValue}`);
-        }
-
-        function showMessage(text, type) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.className = 'message ' + type;
-            msg.style.display = 'block';
-            setTimeout(() => {
-                msg.style.display = 'none';
-            }, 3000);
-        }
-
-        // Initialize
-        function init() {
-            updateStatus();
-            loadEffects();
-            setInterval(updateStatus, 2000);
-        }
-
-        // Start when DOM is loaded
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
-</body>
-</html>
-"""
 
 @app.route('/')
 def index():
     """Serve the main control interface"""
-    return render_template_string(HTML_TEMPLATE)
+    return render_template('index.html')
 
 @app.route('/api/status')
 def get_status():
@@ -913,6 +206,105 @@ def send_control_command():
     except Exception as e:
         print(f"Error sending command {cmd}: {e}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/api/playlists')
+def get_playlists():
+    """List all playlists"""
+    try:
+        import playlist_manager
+        playlists = playlist_manager.list_playlists()
+        return jsonify({'playlists': playlists})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/playlist/<name>')
+def get_playlist(name):
+    """Get playlist details"""
+    try:
+        import playlist_manager
+        playlist = playlist_manager.load_playlist(name)
+        return jsonify(playlist)
+    except FileNotFoundError:
+        return jsonify({'error': f"Playlist '{name}' not found"}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/playlist', methods=['POST'])
+def create_playlist():
+    """Create new playlist"""
+    try:
+        import playlist_manager
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+
+        if not name:
+            return jsonify({'error': 'Name required'}), 400
+
+        # Check if playlist already exists
+        try:
+            playlist_manager.load_playlist(name)
+            return jsonify({'error': f"Playlist '{name}' already exists"}), 400
+        except FileNotFoundError:
+            pass  # Good, doesn't exist
+
+        playlist = playlist_manager.create_playlist(name, description)
+        playlist_manager.save_playlist(name, playlist)
+        return jsonify({'success': True, 'playlist': playlist})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/playlist/<name>', methods=['PUT'])
+def update_playlist(name):
+    """Update playlist"""
+    try:
+        import playlist_manager
+        data = request.json
+
+        is_valid, error = playlist_manager.validate_playlist(data)
+        if not is_valid:
+            return jsonify({'error': error}), 400
+
+        playlist_manager.save_playlist(name, data)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/playlist/<name>', methods=['DELETE'])
+def delete_playlist(name):
+    """Delete playlist"""
+    try:
+        import playlist_manager
+
+        if name in playlist_manager.BUILTIN_PLAYLISTS:
+            return jsonify({'error': 'Cannot delete built-in playlist'}), 403
+
+        success = playlist_manager.delete_playlist(name)
+        if success:
+            return jsonify({'success': True})
+        return jsonify({'error': 'Playlist not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/playlist/<name>/load', methods=['POST'])
+def load_playlist(name):
+    """Load playlist in daemon"""
+    if not is_daemon_running():
+        return jsonify({'error': 'Daemon is not running'}), 503
+
+    try:
+        response = send_command(f'load_playlist {name}')
+        if response and response.get('status') == 'ok':
+            return jsonify({'success': True, 'message': response.get('message')})
+        return jsonify({'error': response.get('message', 'Failed to load playlist')}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 def main():
     parser = argparse.ArgumentParser(description='LED Matrix Web Control Interface')

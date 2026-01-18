@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LED Matrix Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>🎨 LED Matrix Control</h1>
+
+    <div id="offline-warning" class="offline" style="display: none;">
+        ⚠️ Daemon is not running. Start it with: sudo python demos.py --daemon
+    </div>
+
+    <div id="controls" style="display: none;">
+        <div class="status-box">
+            <h2 style="margin-top: 0; color: #00ff88;">Status</h2>
+            <div class="status-item">
+                <span class="status-label">Current Effect:</span>
+                <span class="status-value" id="current-effect">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">State:</span>
+                <span class="status-value" id="state">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Brightness:</span>
+                <span class="status-value" id="brightness-display">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Speed:</span>
+                <span class="status-value" id="speed-display">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Frequency:</span>
+                <span class="status-value" id="frequency-display">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Mode:</span>
+                <span class="status-value" id="mode-display">-</span>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Effect Control</h2>
+            <div class="button-grid">
+                <button onclick="sendCommand('prev')">⬅️ Previous</button>
+                <button onclick="sendCommand('next')">Next ➡️</button>
+                <button onclick="sendCommand('pause')">⏸️ Pause</button>
+                <button onclick="sendCommand('resume')">▶️ Resume</button>
+            </div>
+
+            <select id="effect-select" class="effect-selector" onchange="selectEffect()">
+                <option value="">Select Effect...</option>
+            </select>
+
+            <div class="button-grid" style="margin-top: 15px;">
+                <button onclick="sendCommand('playlist')">🎵 Playlist Mode</button>
+                <button onclick="sendCommand('set', 'text')">📝 Text Mode</button>
+            </div>
+        </div>
+
+        <div id="effect-options-section" class="control-section" style="display: none;">
+            <h2>Effect Options</h2>
+            <div id="effect-options-container">
+                <!-- Effect-specific options will be dynamically loaded here -->
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Playlists</h2>
+
+            <div class="slider-label">
+                <span>Current Playlist</span>
+                <span id="current-playlist-display">None</span>
+            </div>
+
+            <select id="playlist-select" class="effect-selector" onchange="loadPlaylist()">
+                <option value="">Select Playlist...</option>
+            </select>
+
+            <div class="button-grid" style="margin-top: 15px;">
+                <button onclick="showPlaylistEditor()">Edit Playlist</button>
+                <button onclick="showCreatePlaylist()">New Playlist</button>
+                <button onclick="deleteCurrentPlaylist()">Delete Playlist</button>
+            </div>
+        </div>
+
+        <!-- Playlist Editor Modal -->
+        <div id="playlist-editor-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Edit Playlist: <span id="editor-playlist-name"></span></h2>
+
+                <div id="playlist-effects-list"></div>
+
+                <div class="button-grid">
+                    <button onclick="showAddEffectDialog()">Add Effect</button>
+                    <button onclick="savePlaylistChanges()">Save Changes</button>
+                    <button onclick="closePlaylistEditor()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Settings</h2>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Brightness</span>
+                    <span id="brightness-value">50</span>
+                </div>
+                <input type="range" id="brightness" min="0" max="100" value="50"
+                       oninput="updateSlider('brightness')"
+                       onchange="setBrightness()">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Speed</span>
+                    <span id="speed-value">1.0</span>
+                </div>
+                <input type="range" id="speed" min="1" max="50" value="10"
+                       oninput="updateSlider('speed')"
+                       onchange="setSpeed()">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Frequency</span>
+                    <span id="frequency-value">5</span>
+                </div>
+                <input type="range" id="frequency" min="1" max="10" value="5"
+                       oninput="updateSlider('frequency')"
+                       onchange="setFrequency()">
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Daemon Control</h2>
+            <div class="button-grid">
+                <button class="danger" onclick="sendCommand('stop')">⏹️ Stop Daemon</button>
+            </div>
+        </div>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

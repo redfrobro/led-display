@@ -1,0 +1,57 @@
+{
+  "name": "night",
+  "description": "Dark effects suitable for nighttime (8 effects)",
+  "version": "1.0",
+  "created": "2026-01-17T23:03:36.227816Z",
+  "modified": "2026-01-17T23:03:36.227843Z",
+  "effects": [
+    {
+      "key": "matrix",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "sparkle",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "balls",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "lightning",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "fireworks",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "starfield",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "aurora",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "ripple",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    }
+  ]
+}

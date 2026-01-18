@@ -1,0 +1,141 @@
+{
+  "name": "all",
+  "description": "All available effects (22 effects)",
+  "version": "1.0",
+  "created": "2026-01-17T23:03:36.233367Z",
+  "modified": "2026-01-17T23:03:36.233409Z",
+  "effects": [
+    {
+      "key": "plasma",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "fire",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "matrix",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "sparkle",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "meteor",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "spiral",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "balls",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "lightning",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "fireworks",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "starfield",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "bubbles",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "comet",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "waves",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "rain",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "life",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "tunnel",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "pulse",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "warp",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "aurora",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "spectrum",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "swirl",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "ripple",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "name": "high-power",
+  "description": "Pi 3/4 high-performance effects (10 effects)",
+  "version": "1.0",
+  "created": "2026-01-17T23:03:36.222242Z",
+  "modified": "2026-01-17T23:03:36.222279Z",
+  "effects": [
+    {
+      "key": "waves",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "rain",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "life",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "tunnel",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "pulse",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "warp",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "aurora",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "spectrum",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "swirl",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "ripple",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    }
+  ]
+}

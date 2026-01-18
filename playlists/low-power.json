@@ -1,0 +1,81 @@
+{
+  "name": "low-power",
+  "description": "Pi Zero optimized effects (12 effects)",
+  "version": "1.0",
+  "created": "2026-01-17T23:03:36.216552Z",
+  "modified": "2026-01-17T23:03:36.216584Z",
+  "effects": [
+    {
+      "key": "plasma",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "fire",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "matrix",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "sparkle",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "meteor",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "spiral",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "balls",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "lightning",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "fireworks",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "starfield",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "bubbles",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    },
+    {
+      "key": "comet",
+      "duration": 8,
+      "params": {},
+      "options": {}
+    }
+  ]
+}
