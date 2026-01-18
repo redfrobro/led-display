@@ -234,6 +234,31 @@ function setFrequency() {
     debouncedSendCommand('frequency', value);
 }
 
+// Effect editor slider functions
+function updateEffectSlider(type) {
+    const slider = document.getElementById('effect-' + type);
+    const valueSpan = document.getElementById('effect-' + type + '-value');
+
+    if (!slider || !valueSpan) return;
+
+    const value = slider.value;
+    if (type === 'speed') {
+        // Speed slider: 1-50 represents 0.1-5.0
+        const speedValue = (value / 10).toFixed(1);
+        valueSpan.textContent = speedValue;
+    } else {
+        valueSpan.textContent = value;
+    }
+}
+
+function updateEffectOptionSlider(sliderId) {
+    const slider = document.getElementById(sliderId);
+    const valueSpan = document.getElementById(sliderId + '-value');
+    if (slider && valueSpan) {
+        valueSpan.textContent = slider.value;
+    }
+}
+
 function loadEffectOptions(effectKey) {
     fetch('/api/effect/' + effectKey + '/options')
         .then(response => response.json())
@@ -441,6 +466,7 @@ function showMessage(text, type) {
 
 // Playlist Management
 let currentPlaylistData = null;
+let currentEffectIndex = null; // For editing existing effect
 
 async function loadPlaylists() {
     try {
@@ -488,6 +514,8 @@ async function showPlaylistEditor() {
         const response = await fetch('/api/playlist/' + name);
         currentPlaylistData = await response.json();
         document.getElementById('editor-playlist-name').textContent = name;
+        document.getElementById('editor-playlist-description').textContent = currentPlaylistData.description || 'No description';
+        document.getElementById('editor-playlist-count').textContent = currentPlaylistData.effects.length;
         renderPlaylistEffects();
         document.getElementById('playlist-editor-modal').style.display = 'flex';
     } catch (error) {
@@ -498,74 +526,359 @@ async function showPlaylistEditor() {
 function renderPlaylistEffects() {
     const container = document.getElementById('playlist-effects-list');
     container.innerHTML = '';
+
+    if (currentPlaylistData.effects.length === 0) {
+        container.innerHTML = '<div class="empty-message">No effects in playlist. Click "Add Effect" to get started.</div>';
+        return;
+    }
+
     currentPlaylistData.effects.forEach((effect, idx) => {
         const div = document.createElement('div');
         div.className = 'effect-item';
+        div.setAttribute('data-index', idx);
+        div.setAttribute('draggable', 'true');
 
-        // Build parameter info string
-        let paramInfo = 'Duration: ' + (effect.duration || 8) + 's';
+        // Add drag event listeners
+        div.addEventListener('dragstart', handleDragStart);
+        div.addEventListener('dragover', handleDragOver);
+        div.addEventListener('dragleave', handleDragLeave);
+        div.addEventListener('drop', handleDrop);
+        div.addEventListener('dragend', handleDragEnd);
+
+        // Build parameter display
+        const params = [];
+        if (effect.duration && effect.duration > 0) {
+            params.push(`Duration: ${effect.duration}s`);
+        }
         if (effect.params) {
-            if (effect.params.brightness !== undefined) paramInfo += ', Brightness: ' + effect.params.brightness;
-            if (effect.params.frequency !== undefined) paramInfo += ', Frequency: ' + effect.params.frequency;
-            if (effect.params.speed !== undefined) paramInfo += ', Speed: ' + effect.params.speed;
+            if (effect.params.brightness !== undefined) params.push(`Brightness: ${effect.params.brightness}`);
+            if (effect.params.frequency !== undefined) params.push(`Frequency: ${effect.params.frequency}`);
+            if (effect.params.speed !== undefined) params.push(`Speed: ${effect.params.speed}`);
+        }
+        if (effect.options && Object.keys(effect.options).length > 0) {
+            params.push(`Options: ${Object.keys(effect.options).length}`);
         }
 
-        div.innerHTML = '<div><div style="font-weight: bold;">' + effect.key + '</div>' +
-            '<div style="font-size: 0.9em; color: #888;">' + paramInfo + '</div></div>' +
-            '<div class="effect-item-controls">' +
-            '<button onclick="removeEffectFromPlaylist(' + idx + ')">Remove</button>' +
-            '<button onclick="editEffectParams(' + idx + ')">Edit</button>' +
-            '</div>';
+        div.innerHTML = `
+            <div style="flex: 1;">
+                <div class="effect-item-header">
+                    <span class="effect-name">${effect.key}</span>
+                    <span class="drag-handle">⋮⋮</span>
+                </div>
+                <div class="effect-params">
+                    ${params.map(p => `<span class="effect-param has-value">${p}</span>`).join('')}
+                </div>
+            </div>
+            <div class="effect-item-controls">
+                <button onclick="showEditEffectForm(${idx})">Edit</button>
+                <button onclick="removeEffectFromPlaylist(${idx})">Remove</button>
+            </div>
+        `;
         container.appendChild(div);
     });
 }
 
+// Drag and drop functions
+let draggedItem = null;
+
+function handleDragStart(e) {
+    draggedItem = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.getAttribute('data-index'));
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+
+    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    const toIndex = parseInt(this.getAttribute('data-index'));
+
+    if (fromIndex === toIndex) return;
+
+    // Reorder effects array
+    const [movedEffect] = currentPlaylistData.effects.splice(fromIndex, 1);
+    currentPlaylistData.effects.splice(toIndex, 0, movedEffect);
+
+    // Re-render
+    renderPlaylistEffects();
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.effect-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    draggedItem = null;
+}
+
 function removeEffectFromPlaylist(idx) {
+    if (!confirm(`Remove ${currentPlaylistData.effects[idx].key} from playlist?`)) return;
     currentPlaylistData.effects.splice(idx, 1);
     renderPlaylistEffects();
 }
 
-function editEffectParams(idx) {
+function showAddEffectForm() {
+    currentEffectIndex = null; // Adding new effect
+    document.getElementById('effect-editor-title').textContent = 'Add Effect';
+
+    // Reset form
+    document.getElementById('effect-selector').value = '';
+    document.getElementById('effect-duration').value = '8';
+    document.getElementById('effect-brightness').value = '';
+    document.getElementById('effect-brightness-value').textContent = '';
+    document.getElementById('effect-frequency').value = '';
+    document.getElementById('effect-frequency-value').textContent = '';
+    document.getElementById('effect-speed').value = '';
+    document.getElementById('effect-speed-value').textContent = '';
+    document.getElementById('effect-options-container').innerHTML = '';
+
+    // Populate effect selector
+    const selector = document.getElementById('effect-selector');
+    selector.innerHTML = '<option value="">Select an effect...</option>';
+    effectList.forEach(effect => {
+        const option = document.createElement('option');
+        option.value = effect;
+        option.textContent = effect;
+        selector.appendChild(option);
+    });
+
+    // Add event listener for effect selection
+    selector.onchange = function() {
+        if (this.value) {
+            loadEffectOptionsForEditor(this.value);
+        } else {
+            document.getElementById('effect-options-container').innerHTML = '';
+        }
+    };
+
+    // Show modal
+    document.getElementById('effect-editor-modal').style.display = 'flex';
+}
+
+function showEditEffectForm(idx) {
+    currentEffectIndex = idx;
     const effect = currentPlaylistData.effects[idx];
+    document.getElementById('effect-editor-title').textContent = `Edit ${effect.key}`;
 
-    // Edit duration
-    const durationStr = prompt('Duration for ' + effect.key + ' (seconds):', effect.duration || 8);
-    if (durationStr !== null) {
-        effect.duration = parseInt(durationStr);
+    // Populate form
+    document.getElementById('effect-selector').value = effect.key;
+    document.getElementById('effect-duration').value = effect.duration || '8';
+
+    // Set brightness slider if value exists
+    if (effect.params && effect.params.brightness !== undefined) {
+        document.getElementById('effect-brightness').value = effect.params.brightness;
+        document.getElementById('effect-brightness-value').textContent = effect.params.brightness;
+    } else {
+        document.getElementById('effect-brightness').value = '';
+        document.getElementById('effect-brightness-value').textContent = '';
     }
 
-    // Edit brightness
-    const currentBrightness = effect.params && effect.params.brightness !== undefined ? effect.params.brightness : '';
-    const brightnessStr = prompt('Brightness for ' + effect.key + ' (0-100, leave empty for default):', currentBrightness);
-    if (brightnessStr !== null && brightnessStr !== '') {
-        if (!effect.params) effect.params = {};
-        effect.params.brightness = parseInt(brightnessStr);
-    } else if (brightnessStr === '') {
-        if (effect.params) delete effect.params.brightness;
+    // Set frequency slider if value exists
+    if (effect.params && effect.params.frequency !== undefined) {
+        document.getElementById('effect-frequency').value = effect.params.frequency;
+        document.getElementById('effect-frequency-value').textContent = effect.params.frequency;
+    } else {
+        document.getElementById('effect-frequency').value = '';
+        document.getElementById('effect-frequency-value').textContent = '';
     }
 
-    // Edit frequency
-    const currentFrequency = effect.params && effect.params.frequency !== undefined ? effect.params.frequency : '';
-    const frequencyStr = prompt('Frequency for ' + effect.key + ' (1-10, leave empty for default):', currentFrequency);
-    if (frequencyStr !== null && frequencyStr !== '') {
-        if (!effect.params) effect.params = {};
-        effect.params.frequency = parseInt(frequencyStr);
-    } else if (frequencyStr === '') {
-        if (effect.params) delete effect.params.frequency;
+    // Set speed slider if value exists (convert to slider value: speed * 10)
+    if (effect.params && effect.params.speed !== undefined) {
+        const sliderValue = Math.round(effect.params.speed * 10);
+        document.getElementById('effect-speed').value = sliderValue;
+        document.getElementById('effect-speed-value').textContent = effect.params.speed.toFixed(1);
+    } else {
+        document.getElementById('effect-speed').value = '';
+        document.getElementById('effect-speed-value').textContent = '';
     }
 
-    // Edit speed
-    const currentSpeed = effect.params && effect.params.speed !== undefined ? effect.params.speed : '';
-    const speedStr = prompt('Speed for ' + effect.key + ' (0.1-5.0, leave empty for default):', currentSpeed);
-    if (speedStr !== null && speedStr !== '') {
-        if (!effect.params) effect.params = {};
-        effect.params.speed = parseFloat(speedStr);
-    } else if (speedStr === '') {
-        if (effect.params) delete effect.params.speed;
+    // Load effect-specific options
+    loadEffectOptionsForEditor(effect.key, effect.options || {});
+
+    // Show modal
+    document.getElementById('effect-editor-modal').style.display = 'flex';
+}
+
+async function loadEffectOptionsForEditor(effectKey, currentOptions = {}) {
+    const container = document.getElementById('effect-options-container');
+    container.innerHTML = '<p>Loading effect options...</p>';
+
+    try {
+        const response = await fetch('/api/effect/' + effectKey + '/options');
+        const data = await response.json();
+
+        if (!data.options || data.options.length === 0) {
+            container.innerHTML = '<p>This effect has no additional options.</p>';
+            return;
+        }
+
+        container.innerHTML = '<h4>Effect-Specific Options</h4>';
+
+        data.options.forEach(option => {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'option-group';
+
+            const currentValue = currentOptions[option.key] !== undefined ? currentOptions[option.key] : option.default;
+
+            if (option.type === 'boolean') {
+                optionDiv.innerHTML = `
+                    <label>${option.description}</label>
+                    <select id="option-${option.key}" class="effect-selector">
+                        <option value="true" ${currentValue === true ? 'selected' : ''}>On</option>
+                        <option value="false" ${currentValue === false ? 'selected' : ''}>Off</option>
+                    </select>
+                    <small>Default: ${option.default ? 'On' : 'Off'}</small>
+                `;
+            } else if (option.type === 'number') {
+                // Determine min/max/step based on option key
+                let min = 0, max = 100, step = 1;
+                if (option.key === 'speed') { min = 1; max = 50; step = 1; } // 0.1-5.0
+                else if (option.key === 'intensity' || option.key === 'cooling') { min = 1; max = 10; }
+                else if (option.key === 'color_hue') { min = 0; max = 360; }
+                else if (option.key === 'scroll_speed') { min = 0; max = 200; step = 0.1; }
+                else if (option.key === 'gravity') { min = 1; max = 50; step = 1; } // 0.01-0.5
+
+                optionDiv.innerHTML = `
+                    <label>${option.description}</label>
+                    <input type="range" id="option-${option.key}"
+                           min="${min}" max="${max}" step="${step}" value="${currentValue}"
+                           oninput="document.getElementById('option-${option.key}-value').textContent = this.value">
+                    <div class="slider-value">Value: <span id="option-${option.key}-value">${currentValue}</span></div>
+                    <small>Default: ${option.default}</small>
+                `;
+            } else if (option.type === 'text') {
+                optionDiv.innerHTML = `
+                    <label>${option.description}</label>
+                    <input type="text" id="option-${option.key}" value="${currentValue}" class="form-input">
+                    <small>Default: ${option.default}</small>
+                `;
+            } else if (option.type === 'enum' && option.key === 'font_name') {
+                // Special handling for font selection
+                optionDiv.innerHTML = `
+                    <label>${option.description}</label>
+                    <select id="option-${option.key}" class="effect-selector">
+                        <option value="">Loading fonts...</option>
+                    </select>
+                    <small>Default: ${option.default}</small>
+                `;
+                // Load fonts
+                fetch('/api/fonts')
+                    .then(response => response.json())
+                    .then(fontData => {
+                        const select = document.getElementById(`option-${option.key}`);
+                        select.innerHTML = '';
+                        fontData.fonts.forEach(font => {
+                            const opt = document.createElement('option');
+                            opt.value = font;
+                            opt.textContent = font;
+                            if (font === currentValue) opt.selected = true;
+                            select.appendChild(opt);
+                        });
+                    });
+            } else {
+                // Generic dropdown for enum
+                optionDiv.innerHTML = `
+                    <label>${option.description}</label>
+                    <input type="text" id="option-${option.key}" value="${currentValue}" class="form-input">
+                    <small>Default: ${option.default}</small>
+                `;
+            }
+
+            container.appendChild(optionDiv);
+        });
+    } catch (error) {
+        container.innerHTML = '<p>Failed to load effect options.</p>';
+        console.error('Error loading effect options:', error);
+    }
+}
+
+function saveEffect() {
+    // Get basic values
+    const effectKey = document.getElementById('effect-selector').value;
+    if (!effectKey) {
+        showMessage('Please select an effect', 'error');
+        return;
     }
 
-    // Re-render to show updated values
+    const duration = parseInt(document.getElementById('effect-duration').value) || 8;
+
+    // Get global parameters (empty string means use default)
+    const brightness = document.getElementById('effect-brightness').value;
+    const frequency = document.getElementById('effect-frequency').value;
+    const speedSlider = document.getElementById('effect-speed').value;
+    const speed = speedSlider ? (parseInt(speedSlider) / 10).toFixed(1) : '';
+
+    // Build effect object
+    const effect = {
+        key: effectKey,
+        duration: duration,
+        params: {},
+        options: {}
+    };
+
+    // Add global parameters if specified
+    if (brightness) effect.params.brightness = parseInt(brightness);
+    if (frequency) effect.params.frequency = parseInt(frequency);
+    if (speed) effect.params.speed = parseFloat(speed);
+
+    // Collect effect-specific options
+    const optionGroups = document.querySelectorAll('.option-group');
+    optionGroups.forEach(group => {
+        const input = group.querySelector('input, select');
+        if (input) {
+            const key = input.id.replace('option-', '');
+            let value = input.value;
+
+            // Convert string values to appropriate types
+            if (input.type === 'range') {
+                value = parseFloat(value);
+            } else if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.tagName === 'SELECT') {
+                if (value === 'true') value = true;
+                else if (value === 'false') value = false;
+                else value = isNaN(value) ? value : parseFloat(value);
+            } else {
+                // Try to parse as number if it looks like one
+                if (!isNaN(value) && value.trim() !== '') {
+                    value = parseFloat(value);
+                }
+            }
+
+            effect.options[key] = value;
+        }
+    });
+
+    // Add or update effect in playlist
+    if (currentEffectIndex === null) {
+        // Add new effect
+        currentPlaylistData.effects.push(effect);
+    } else {
+        // Update existing effect
+        currentPlaylistData.effects[currentEffectIndex] = effect;
+    }
+
+    // Update UI and close editor
     renderPlaylistEffects();
+    closeEffectEditor();
+    showMessage(`Effect ${effectKey} ${currentEffectIndex === null ? 'added' : 'updated'}`, 'success');
+}
+
+function closeEffectEditor() {
+    document.getElementById('effect-editor-modal').style.display = 'none';
+    currentEffectIndex = null;
 }
 
 async function savePlaylistChanges() {
@@ -591,6 +904,7 @@ async function savePlaylistChanges() {
 
 function closePlaylistEditor() {
     document.getElementById('playlist-editor-modal').style.display = 'none';
+    currentPlaylistData = null;
 }
 
 async function showCreatePlaylist() {
@@ -643,52 +957,6 @@ async function deleteCurrentPlaylist() {
     } catch (error) {
         showMessage('Error deleting playlist', 'error');
     }
-}
-
-function showAddEffectDialog() {
-    if (!effectList || effectList.length === 0) {
-        showMessage('No effects available', 'error');
-        return;
-    }
-
-    // Create a simple dialog to select effect
-    const effectKey = prompt('Enter effect name:\n\nAvailable effects:\n' + effectList.join(', '));
-    if (!effectKey) return;
-
-    // Validate effect exists
-    if (!effectList.includes(effectKey)) {
-        showMessage('Invalid effect: ' + effectKey, 'error');
-        return;
-    }
-
-    // Ask for optional parameters
-    const durationStr = prompt('Duration in seconds (default: 8):');
-    const duration = durationStr ? parseInt(durationStr) : 8;
-
-    const brightnessStr = prompt('Brightness 0-100 (leave empty for default):');
-    const brightness = brightnessStr ? parseInt(brightnessStr) : null;
-
-    const frequencyStr = prompt('Frequency 1-10 (leave empty for default):');
-    const frequency = frequencyStr ? parseInt(frequencyStr) : null;
-
-    const speedStr = prompt('Speed 0.1-5.0 (leave empty for default):');
-    const speed = speedStr ? parseFloat(speedStr) : null;
-
-    // Add effect to current playlist data
-    const newEffect = {
-        key: effectKey,
-        duration: duration,
-        params: {},
-        options: {}
-    };
-
-    if (brightness !== null) newEffect.params.brightness = brightness;
-    if (frequency !== null) newEffect.params.frequency = frequency;
-    if (speed !== null) newEffect.params.speed = speed;
-
-    currentPlaylistData.effects.push(newEffect);
-    renderPlaylistEffects();
-    showMessage('Added ' + effectKey + ' to playlist', 'success');
 }
 
 // Initialize

@@ -91,12 +91,85 @@
             <div class="modal-content">
                 <h2>Edit Playlist: <span id="editor-playlist-name"></span></h2>
 
-                <div id="playlist-effects-list"></div>
+                <div class="playlist-info">
+                    <p id="editor-playlist-description"></p>
+                    <p><strong>Effects: </strong><span id="editor-playlist-count">0</span></p>
+                </div>
 
-                <div class="button-grid">
-                    <button onclick="showAddEffectDialog()">Add Effect</button>
-                    <button onclick="savePlaylistChanges()">Save Changes</button>
+                <div class="effects-list-header">
+                    <h3>Effects</h3>
+                    <button onclick="showAddEffectForm()" class="small-button">➕ Add Effect</button>
+                </div>
+
+                <div id="playlist-effects-list" class="effects-list">
+                    <!-- Effects will be rendered here with drag-and-drop -->
+                </div>
+
+                <div class="modal-actions">
+                    <button onclick="savePlaylistChanges()" class="primary">💾 Save Changes</button>
                     <button onclick="closePlaylistEditor()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Effect Modal -->
+        <div id="effect-editor-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2 id="effect-editor-title">Add Effect</h2>
+
+                <div class="form-group">
+                    <label for="effect-selector">Effect</label>
+                    <select id="effect-selector" class="effect-selector">
+                        <option value="">Select an effect...</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="effect-duration">Duration (seconds)</label>
+                        <input type="number" id="effect-duration" min="0" max="999" step="1" value="8" class="form-input">
+                        <small>0 = use global default</small>
+                    </div>
+                </div>
+
+                <h3>Global Parameters</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="effect-brightness">Brightness (0-100)</label>
+                        <input type="range" id="effect-brightness" min="0" max="100" value="" class="form-slider"
+                               oninput="updateEffectSlider('brightness')">
+                        <div class="slider-value"><span id="effect-brightness-value"></span></div>
+                        <small>Leave empty for default</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="effect-frequency">Frequency (1-10)</label>
+                        <input type="range" id="effect-frequency" min="1" max="10" value="" class="form-slider"
+                               oninput="updateEffectSlider('frequency')">
+                        <div class="slider-value"><span id="effect-frequency-value"></span></div>
+                        <small>Leave empty for default</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="effect-speed">Speed (0.1-5.0)</label>
+                        <input type="range" id="effect-speed" min="1" max="50" value="" class="form-slider"
+                               oninput="updateEffectSlider('speed')">
+                        <div class="slider-value"><span id="effect-speed-value"></span></div>
+                        <small>Leave empty for default</small>
+                    </div>
+                </div>
+
+                <div id="effect-options-container" class="effect-options">
+                    <!-- Effect-specific options will be loaded here -->
+                </div>
+
+                <div class="modal-actions">
+                    <button onclick="saveEffect()" class="primary">💾 Save Effect</button>
+                    <button onclick="closeEffectEditor()">Cancel</button>
                 </div>
             </div>
         </div>
