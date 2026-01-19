@@ -1831,6 +1831,7 @@ class DaemonController:
                             effect_duration = 0
                         else:
                             effect_duration = self.effect_durations.get(key, self.args.duration)
+                            logger.debug(f"Effect '{key}' duration: {effect_duration}s (args.duration={self.args.duration}, playlist_durations={self.effect_durations.get(key, 'not set')})")
                         effect_params = self.effect_params.get(key, {})
                         effect_brightness = effect_params.get('brightness') if effect_params.get('brightness') is not None else self.brightness
                         effect_frequency = effect_params.get('frequency') if effect_params.get('frequency') is not None else self.frequency
@@ -2098,10 +2099,15 @@ class DaemonController:
                                 'options': effect.get('options', {})
                             }
 
+                    logger.debug(f"Loaded playlist durations: {self.effect_durations}")
+                    logger.debug(f"Loaded playlist params keys: {list(self.effect_params.keys())}")
+
                     # Reset to playlist mode and interrupt current effect
                     self.playback_mode = 'playlist'
                     self.effect_index = 0
-                    self.skip_to_next = True
+                    self.skip_to_next = False
+                    self.skip_to_prev = False
+                    self.jump_to_effect = True
 
                     return {
                         "status": "ok",
