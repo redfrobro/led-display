@@ -13,4 +13,59 @@ done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 
 cd "$SCRIPT_DIR"
-exec sudo -E env PATH=$PATH python demos.py "$@"
+
+# Determine the actual user's home directory (not root's when using sudo)
+USER_HOME="$HOME"
+if [ -n "$SUDO_USER" ]; then
+    # Running with sudo, get the original user's home
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6 2>/dev/null || echo "$HOME")
+elif [ -n "$USER" ]; then
+    USER_HOME=$(eval echo "~$USER" 2>/dev/null || echo "$HOME")
+fi
+
+# Function to find virtual environment
+find_venv() {
+    local user_home="$1"
+
+    # Check common virtual environment locations
+    local venv_locations=(
+        "$SCRIPT_DIR/venv"
+        "$SCRIPT_DIR/.venv"
+        "$user_home/rgbmatrix"  # User's specific venv location
+        "$SCRIPT_DIR/env"
+        "$SCRIPT_DIR/../venv"
+        "$SCRIPT_DIR/../.venv"
+    )
+
+    for venv_dir in "${venv_locations[@]}"; do
+        if [ -f "$venv_dir/bin/python" ]; then
+            echo "$venv_dir/bin/python"
+            return 0
+        fi
+    done
+
+    # Check if we're already in an activated virtual environment
+    if [ -n "$VIRTUAL_ENV" ] && [ -f "$VIRTUAL_ENV/bin/python" ]; then
+        echo "$VIRTUAL_ENV/bin/python"
+        return 0
+    fi
+
+    return 1
+}
+
+# Try to find virtual environment Python
+VENV_PYTHON=$(find_venv "$USER_HOME")
+
+if [ -n "$VENV_PYTHON" ]; then
+    echo "Using virtual environment Python: $VENV_PYTHON"
+    exec sudo -E env PATH=$PATH "$VENV_PYTHON" demos.py "$@"
+else
+    echo "Warning: No virtual environment found. Using system Python."
+    echo "If you have a virtual environment, make sure it's in one of these locations:"
+    echo "  - $SCRIPT_DIR/venv/"
+    echo "  - $SCRIPT_DIR/.venv/"
+    echo "  - $USER_HOME/rgbmatrix/"
+    echo "  - Or activate it before running this script."
+    echo ""
+    exec sudo -E env PATH=$PATH python demos.py "$@"
+fi

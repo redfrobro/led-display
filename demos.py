@@ -1747,6 +1747,19 @@ class DaemonController:
         self.webserver_enabled = webserver_enabled
         self.webserver_port = webserver_port
 
+        # Check Flask availability if webserver is enabled
+        if self.webserver_enabled:
+            try:
+                import flask
+            except ImportError:
+                print("ERROR: Flask is not importable. Web server will be disabled.")
+                print("Possible solutions:")
+                print("1. Activate your virtual environment: source /path/to/venv/bin/activate")
+                print("2. Use virtual environment's Python: sudo /path/to/venv/bin/python demos.py --daemon --webserver")
+                print("3. Install Flask in the venv: pip install flask")
+                print()
+                self.webserver_enabled = False
+
         # Threading
         self.effect_thread = None
         self.ipc_thread = None
@@ -2223,6 +2236,17 @@ class DaemonController:
         """Run Flask web server"""
         logger.info(f"Web server starting on port {self.webserver_port}")
 
+        # Check if Flask is available
+        try:
+            import flask
+        except ImportError:
+            logger.error("Flask is not importable. Web server disabled.")
+            logger.error("Possible solutions:")
+            logger.error("1. Activate your virtual environment: source /path/to/venv/bin/activate")
+            logger.error("2. Use virtual environment's Python: sudo /path/to/venv/bin/python demos.py --daemon --webserver")
+            logger.error("3. Install Flask in the venv: pip install flask")
+            return
+
         try:
             import webserver
             from werkzeug.serving import make_server
@@ -2245,7 +2269,7 @@ class DaemonController:
             self.flask_server.serve_forever()
 
         except ImportError:
-            logger.error("Flask not installed. Install with: pip install flask")
+            logger.error("Failed to import webserver module. Check Flask installation.")
         except Exception as e:
             logger.error(f"Web server error: {e}", exc_info=True)
         finally:
@@ -2520,10 +2544,12 @@ if __name__ == "__main__":
         logger.info("Built-in playlists created")
 
     # Determine which effects to run
+    loaded_playlist_data = None
     if args.playlist:
         try:
             import playlist_manager
             playlist_data = playlist_manager.load_playlist(args.playlist)
+            loaded_playlist_data = playlist_data
             effect_keys = [e['key'] for e in playlist_data['effects']]
             logger.debug(f"Loaded playlist '{args.playlist}' with {len(effect_keys)} effects")
         except FileNotFoundError:
@@ -2544,6 +2570,7 @@ if __name__ == "__main__":
         try:
             import playlist_manager
             playlist_data = playlist_manager.load_playlist('low-power')
+            loaded_playlist_data = playlist_data
             effect_keys = [e['key'] for e in playlist_data['effects']]
         except (FileNotFoundError, ValueError):
             # Fallback to hardcoded list if playlist doesn't exist
@@ -2552,6 +2579,7 @@ if __name__ == "__main__":
         try:
             import playlist_manager
             playlist_data = playlist_manager.load_playlist('high-power')
+            loaded_playlist_data = playlist_data
             effect_keys = [e['key'] for e in playlist_data['effects']]
         except (FileNotFoundError, ValueError):
             # Fallback to hardcoded list if playlist doesn't exist
@@ -2560,6 +2588,7 @@ if __name__ == "__main__":
         try:
             import playlist_manager
             playlist_data = playlist_manager.load_playlist('night')
+            loaded_playlist_data = playlist_data
             effect_keys = [e['key'] for e in playlist_data['effects']]
         except (FileNotFoundError, ValueError):
             # Fallback to hardcoded list if playlist doesn't exist
@@ -2568,11 +2597,28 @@ if __name__ == "__main__":
         try:
             import playlist_manager
             playlist_data = playlist_manager.load_playlist('all')
+            loaded_playlist_data = playlist_data
             effect_keys = [e['key'] for e in playlist_data['effects']]
         except (FileNotFoundError, ValueError):
             # Fallback to hardcoded list if playlist doesn't exist
             effect_keys = DEFAULT_ORDER.copy()
-
+    # Extract per-effect parameters from playlist (if loaded)
+    effect_durations = {}
+    effect_params = {}
+    if loaded_playlist_data is not None:
+        for effect in loaded_playlist_data['effects']:
+            key = effect['key']
+            # Store duration
+            if 'duration' in effect and effect['duration'] > 0:
+                effect_durations[key] = effect['duration']
+            # Store params (brightness, frequency, speed) and options
+            if 'params' in effect or 'options' in effect:
+                effect_params[key] = {
+                    'brightness': effect.get('params', {}).get('brightness'),
+                    'frequency': effect.get('params', {}).get('frequency'),
+                    'speed': effect.get('params', {}).get('speed'),
+                    'options': effect.get('options', {})
+                }
     if args.shuffle:
         shuffle(effect_keys)
         logger.debug("Effect order shuffled")
@@ -2588,11 +2634,35 @@ if __name__ == "__main__":
         print(f"Make sure daemon is running: sudo python demos.py --daemon")
         print()
 
+        # Check if Flask is available and provide helpful guidance if not
+        try:
+            import flask
+        except ImportError:
+            print("Error: Flask is not importable.")
+            print()
+            print("Flask is required for the web server. Possible solutions:")
+            print()
+            print("1. Activate your virtual environment and install Flask:")
+            print("   source /path/to/venv/bin/activate  # Adjust path if different")
+            print("   pip install flask")
+            print()
+            print("2. Use your virtual environment's Python interpreter directly:")
+            print("   sudo /path/to/venv/bin/python demos.py --webserver")
+            print()
+            print("3. Preserve your environment with sudo -E and ensure PATH includes venv:")
+            print("   source /path/to/venv/bin/activate")
+            print("   sudo -E env PATH=$PATH python demos.py --webserver")
+            print()
+            print("4. Install Flask system-wide (not recommended):")
+            print("   sudo pip install flask")
+            print()
+            sys.exit(1)
+
         try:
             import webserver
             webserver.app.run(host='0.0.0.0', port=args.port, debug=False)
-        except ImportError:
-            print("Error: Flask not installed. Install with: pip install flask")
+        except ImportError as e:
+            print(f"Error: Failed to import webserver module: {e}")
             sys.exit(1)
         except PermissionError:
             print(f"Error: Permission denied. Port {args.port} requires sudo.")
@@ -2648,16 +2718,30 @@ if __name__ == "__main__":
             while args.loops == 0 or loop_count < args.loops:
                 for key in effect_keys:
                     name, func, _ = DEMOS[key]
+                    # Get per-effect parameters from playlist (if set)
+                    effect_duration = effect_durations.get(key, args.duration)
+                    effect_param = effect_params.get(key, {})
+                    effect_frequency = effect_param.get('frequency', args.frequency)
+                    effect_speed = effect_param.get('speed', 1.0)
+                    playlist_opts = effect_param.get('options', {})
+
                     opts = get_effect_options(key)
+                    # Merge playlist options with current effect_options
+                    opts.update(playlist_opts)
+                    # Add speed to opts if the effect supports it
+                    if 'speed' not in opts:
+                        opts['speed'] = effect_speed
+
                     logger.debug(f"Starting effect '{key}' with options: {opts}")
                     print(f"Now showing: {name}")
 
                     start = time.time()
-                    if args.duration == 0:
-                        # Run forever (until Ctrl+C)
-                        func(duration=999999, frequency=args.frequency, **opts)
-                    else:
-                        func(duration=args.duration, frequency=args.frequency, **opts)
+                    duration = effect_duration if effect_duration > 0 else 999999
+                    func(
+                        duration=duration,
+                        frequency=effect_frequency,
+                        **opts
+                    )
 
                     elapsed = time.time() - start
                     logger.debug(f"Effect '{key}' finished after {elapsed:.2f}s")
