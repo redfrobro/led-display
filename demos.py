@@ -1879,6 +1879,10 @@ class DaemonController:
                             self.playback_mode = 'playlist'  # Switch to playlist on manual navigation
                             break  # Break out of for loop to restart with new position
 
+                        # Normal completion - update index for next effect (playlist mode only)
+                        if mode == 'playlist':
+                            self.effect_index = (idx + 1) % len(self.effect_keys)
+
                     matrix.Clear()
                     time.sleep(self.args.pause)
 
