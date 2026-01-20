@@ -15,14 +15,14 @@ import playlist_manager
 DEMOS = None
 
 def get_demos():
-    """Lazy load DEMOS dict from demos.py"""
+    """Lazy load DEMOS dict from effects module"""
     global DEMOS
     if DEMOS is None:
         try:
-            from demos import DEMOS as _DEMOS
+            from effects import DEMOS as _DEMOS
             DEMOS = _DEMOS
         except ImportError as e:
-            print(f"Warning: Could not import DEMOS from demos.py: {e}", file=sys.stderr)
+            print(f"Warning: Could not import DEMOS from effects module: {e}", file=sys.stderr)
             DEMOS = {}
     return DEMOS
 

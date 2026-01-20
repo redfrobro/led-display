@@ -57,7 +57,7 @@ def get_status():
 def get_effects():
     """Get list of available effects"""
     try:
-        from demos import DEMOS
+        from effects import DEMOS
         return jsonify({'effects': list(DEMOS.keys())})
     except Exception as e:
         print(f"Error getting effects: {e}")
@@ -88,7 +88,8 @@ def get_fonts():
 def get_effect_options(effect_key):
     """Get customizable options for a specific effect"""
     try:
-        from demos import DEMOS, load_text_effect_config
+        from effects import DEMOS
+        from demos import load_text_effect_config
         if effect_key in DEMOS:
             _, _, options = DEMOS[effect_key]
             # Convert options dict to a list with metadata

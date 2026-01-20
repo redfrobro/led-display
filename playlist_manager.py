@@ -170,12 +170,13 @@ def validate_playlist(data: dict) -> Tuple[bool, Optional[str]]:
 
     # Import DEMOS to validate effect keys
     try:
-        from demos import DEMOS, validate_effect_option
+        from effects import DEMOS
+        from demos import validate_effect_option
     except ImportError as e:
         # Allow validation to pass if rgbmatrix is not available (e.g., on dev machine)
         # Just do basic structure validation
         import warnings
-        warnings.warn(f"Cannot import from demos.py (likely missing rgbmatrix): {e}")
+        warnings.warn(f"Cannot import effects module (likely missing rgbmatrix): {e}")
         DEMOS = {}
         validate_effect_option = lambda *args: True
 
@@ -300,9 +301,9 @@ def migrate_builtin_playlists():
     ensure_playlists_dir()
 
     try:
-        from demos import LOW_POWER_ORDER, HIGH_POWER_ORDER, NIGHT_MODE, DEFAULT_ORDER
+        from effects import LOW_POWER_ORDER, HIGH_POWER_ORDER, NIGHT_MODE, DEFAULT_ORDER
     except ImportError:
-        raise ImportError("Cannot import effect lists from demos.py")
+        raise ImportError("Cannot import effect lists from effects module")
 
     # Define built-in playlists
     builtin_configs = [
@@ -369,7 +370,7 @@ def add_effect_to_playlist(playlist_data: dict, effect_key: str,
         ValueError: If effect is invalid
     """
     try:
-        from demos import DEMOS
+        from effects import DEMOS
         if effect_key not in DEMOS:
             raise ValueError(f"Unknown effect: {effect_key}")
     except ImportError:
