@@ -98,6 +98,8 @@ def format_response(response):
         print(f"Frequency: {response['frequency']}")
         print(f"Brightness: {response['brightness']}%")
         print(f"Speed: {response['speed']}x")
+        duration = response.get('duration', 0)
+        print(f"Duration: {'forever' if duration == 0 else f'{duration}s'}")
 
     # Special formatting for list command
     if "effects" in response:
@@ -180,6 +182,7 @@ def print_usage():
     print("  frequency <1-10>    Adjust spawn frequency")
     print("  brightness <0-100>  Adjust brightness level")
     print("  speed <0.1-5.0>     Adjust animation speed")
+    print("  duration <seconds>  Set effect duration (0 = forever)")
     print("  opt <key>=<value>   Set effect-specific option")
     print()
     print("Playlist Commands:")
@@ -199,6 +202,7 @@ def print_usage():
     print("  led-control frequency 8")
     print("  led-control brightness 50")
     print("  led-control speed 2.0")
+    print("  led-control duration 15")
     print("  led-control opt particles=50")
     print("  led-control load_playlist my-favorites")
     print("  led-control list_playlists")

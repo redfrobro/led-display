@@ -352,6 +352,7 @@ class DaemonController:
         self.frequency = args.frequency
         self.brightness = 100
         self.speed = 1.0
+        self.duration = args.duration
         self.effect_options = EFFECT_OPTIONS.copy()
 
         # Playback mode
@@ -439,7 +440,7 @@ class DaemonController:
                         if key == "text" and mode == 'single':
                             effect_duration = 0
                         else:
-                            effect_duration = self.effect_durations.get(key, self.args.duration)
+                            effect_duration = self.effect_durations.get(key, self.duration)
 
                         effect_params = self.effect_params.get(key, {})
                         effect_brightness = effect_params.get('brightness') if effect_params.get('brightness') is not None else self.brightness
@@ -514,6 +515,7 @@ class DaemonController:
                     "frequency": self.frequency,
                     "brightness": self.brightness,
                     "speed": self.speed,
+                    "duration": self.duration,
                     "playback_mode": self.playback_mode,
                     "playlist": self.current_playlist_name,
                     "playlist_effect_count": len(self.effect_keys) if self.current_playlist_name else None
@@ -542,12 +544,14 @@ class DaemonController:
                     target_idx = self.effect_keys.index(arg)
                     self.effect_index = target_idx
                     self.playback_mode = 'single'
+                    self.duration = 0  # Run forever in single mode
                     self.jump_to_effect = True
                     return {"status": "ok", "message": f"Locked on {arg}"}
                 else:
                     self.effect_keys.append(arg)
                     self.effect_index = len(self.effect_keys) - 1
                     self.playback_mode = 'single'
+                    self.duration = 0  # Run forever in single mode
                     self.jump_to_effect = True
                     return {"status": "ok", "message": f"Locked on {arg} (special effect)"}
 
@@ -607,6 +611,22 @@ class DaemonController:
                         return {"status": "error", "message": "Speed must be 0.1-5.0"}
                 except ValueError:
                     return {"status": "error", "message": "Invalid speed value"}
+
+            elif command == "duration":
+                if not arg:
+                    return {"status": "error", "message": "Missing duration value"}
+                try:
+                    dur = int(arg)
+                    if dur >= 0:
+                        self.duration = dur
+                        if dur == 0:
+                            return {"status": "ok", "duration": dur, "message": "Duration set to forever"}
+                        else:
+                            return {"status": "ok", "duration": dur, "message": f"Duration set to {dur}s"}
+                    else:
+                        return {"status": "error", "message": "Duration must be >= 0"}
+                except ValueError:
+                    return {"status": "error", "message": "Invalid duration value"}
 
             elif command == "opt":
                 if not arg or "=" not in arg:
@@ -712,7 +732,7 @@ class DaemonController:
                     for key in self.effect_keys:
                         effect = {
                             'key': key,
-                            'duration': self.effect_durations.get(key, self.args.duration),
+                            'duration': self.effect_durations.get(key, self.duration),
                             'params': {},
                             'options': {}
                         }
