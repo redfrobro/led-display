@@ -45,7 +45,8 @@ def get_status():
                 'brightness': response.get('brightness', 100),
                 'speed': response.get('speed', 1.0),
                 'frequency': response.get('frequency', 5),
-                'mode': response.get('playback_mode', 'playlist')
+                'mode': response.get('playback_mode', 'playlist'),
+                'effects_running': response.get('effects_running', True)
             })
         else:
             return jsonify({'status': 'offline'})
@@ -207,6 +208,24 @@ def send_control_command():
     except Exception as e:
         print(f"Error sending command {cmd}: {e}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@app.route('/api/start', methods=['POST'])
+def start_effects():
+    """Start/restart the LED effects"""
+    if not is_daemon_running():
+        return jsonify({'success': False, 'message': 'Daemon process is not running'})
+
+    try:
+        response = send_command('start')
+        if response and response.get('status') == 'ok':
+            return jsonify({'success': True, 'message': response.get('message', 'Effects started')})
+        else:
+            msg = response.get('message', 'Failed to start effects') if response else 'No response from daemon'
+            return jsonify({'success': False, 'message': msg})
+    except Exception as e:
+        print(f"Error starting effects: {e}")
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
 
 @app.route('/api/playlists')
 def get_playlists():

@@ -340,6 +340,7 @@ class DaemonController:
         self.args = args
         self.effect_keys = effect_keys
         self.running = True
+        self.effects_running = True
         self.paused = False
         self.current_effect = None
         self.effect_index = 0
@@ -385,17 +386,17 @@ class DaemonController:
     def should_interrupt(self):
         """Called by effect functions to check for commands"""
         with self.cond:
-            if not self.running or self.skip_to_next or self.skip_to_prev or self.jump_to_effect:
+            if not self.running or not self.effects_running or self.skip_to_next or self.skip_to_prev or self.jump_to_effect:
                 return True
 
         while True:
             with self.cond:
-                if not self.paused or not self.running:
+                if not self.paused or not self.running or not self.effects_running:
                     break
             time.sleep(0.1)
 
         with self.cond:
-            return not self.running
+            return not self.running or not self.effects_running
 
     def apply_brightness(self, r, g, b):
         """Scale RGB values by brightness percentage"""
@@ -413,7 +414,7 @@ class DaemonController:
         loop_count = 0
 
         try:
-            while self.running and (self.args.loops == 0 or loop_count < self.args.loops):
+            while self.running and self.effects_running and (self.args.loops == 0 or loop_count < self.args.loops):
                 with self.cond:
                     mode = self.playback_mode
                     start_idx = self.effect_index
@@ -428,7 +429,7 @@ class DaemonController:
 
                 for idx, key in effects_to_play:
                     with self.cond:
-                        if not self.running:
+                        if not self.running or not self.effects_running:
                             break
                         self.effect_index = idx
                         self.current_effect = key
@@ -465,7 +466,7 @@ class DaemonController:
                     run_effect(key, ctx, duration, effect_frequency, opts)
 
                     with self.cond:
-                        if not self.running:
+                        if not self.running or not self.effects_running:
                             break
                         if self.jump_to_effect:
                             break
@@ -486,7 +487,7 @@ class DaemonController:
 
                 loop_count += 1
 
-                if self.args.shuffle and self.running and (self.args.loops == 0 or loop_count < self.args.loops):
+                if self.args.shuffle and self.running and self.effects_running and (self.args.loops == 0 or loop_count < self.args.loops):
                     shuffle(self.effect_keys)
 
         except Exception as e:
@@ -518,7 +519,8 @@ class DaemonController:
                     "duration": self.duration,
                     "playback_mode": self.playback_mode,
                     "playlist": self.current_playlist_name,
-                    "playlist_effect_count": len(self.effect_keys) if self.current_playlist_name else None
+                    "playlist_effect_count": len(self.effect_keys) if self.current_playlist_name else None,
+                    "effects_running": self.effects_running
                 }
 
             elif command == "next":
@@ -561,13 +563,19 @@ class DaemonController:
                 return {"status": "ok", "message": "Playlist mode enabled"}
 
             elif command == "stop":
-                self.running = False
-                if self.flask_server:
-                    try:
-                        threading.Thread(target=self.flask_server.shutdown, daemon=True).start()
-                    except Exception as e:
-                        logger.error(f"Error shutting down Flask server: {e}")
-                return {"status": "ok", "message": "Stopping daemon"}
+                self.effects_running = False
+                self.cond.notify_all()
+                return {"status": "ok", "message": "Stopping effects"}
+
+            elif command == "start":
+                if not self.effects_running:
+                    self.effects_running = True
+                    self.cond.notify_all()
+                    self.effect_thread = threading.Thread(target=self.effect_worker, daemon=False)
+                    self.effect_thread.start()
+                    return {"status": "ok", "message": "Effects started"}
+                else:
+                    return {"status": "ok", "message": "Effects already running"}
 
             elif command == "list":
                 effects = [{"key": k, "name": DEMOS[k][0]} for k in self.effect_keys]
@@ -904,13 +912,13 @@ class DaemonController:
     def wait(self):
         """Wait for threads to finish"""
         try:
-            self.effect_thread.join()
             self.ipc_thread.join()
             if self.webserver_thread:
                 self.webserver_thread.join()
         except KeyboardInterrupt:
             logger.info("Interrupted, shutting down...")
             self.running = False
+            self.effects_running = False
 
             if self.flask_server:
                 try:
@@ -919,7 +927,6 @@ class DaemonController:
                 except Exception as e:
                     logger.error(f"Error shutting down web server: {e}")
 
-            self.effect_thread.join(timeout=2)
             self.ipc_thread.join(timeout=2)
             if self.webserver_thread:
                 self.webserver_thread.join(timeout=2)

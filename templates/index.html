@@ -211,7 +211,8 @@
         <div class="control-section">
             <h2>Daemon Control</h2>
             <div class="button-grid">
-                <button class="danger" onclick="sendCommand('stop')">⏹️ Stop Daemon</button>
+                <button id="stop-btn" class="danger" onclick="stopEffects()" style="display:none">⏹️ Stop Daemon</button>
+                <button id="start-btn" onclick="startEffects()" style="display:none">▶️ Start Daemon</button>
             </div>
         </div>
 

@@ -103,6 +103,13 @@ function updateStatus() {
                 lastSentValues.frequency = frequency;
             }
 
+            // Update daemon control buttons based on effects_running
+            const effectsRunning = data.effects_running !== false;
+            const stopBtn = document.getElementById('stop-btn');
+            const startBtn = document.getElementById('start-btn');
+            if (stopBtn) stopBtn.style.display = effectsRunning ? 'block' : 'none';
+            if (startBtn) startBtn.style.display = effectsRunning ? 'none' : 'block';
+
             // Load effect options if effect changed or mode is single
             if (mode === 'single' && effectKey && effectKey !== currentEffectKey) {
                 loadEffectOptions(effectKey);
@@ -187,6 +194,36 @@ function sendCommand(cmd, args = null) {
 
 // Debounced version of sendCommand for sliders
 const debouncedSendCommand = debounce(sendCommand, 300);
+
+function stopEffects() {
+    sendCommand('stop');
+}
+
+function startEffects() {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = 'Starting effects...';
+    messageDiv.className = 'message';
+    messageDiv.style.display = 'block';
+
+    fetch('/api/start', {method: 'POST', headers: {'Content-Type': 'application/json'}})
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                messageDiv.textContent = data.message || 'Effects started';
+                messageDiv.className = 'message success';
+                setTimeout(updateStatus, 500);
+            } else {
+                messageDiv.textContent = data.message || 'Failed to start effects';
+                messageDiv.className = 'message error';
+            }
+            setTimeout(() => { messageDiv.style.display = 'none'; }, 3000);
+        })
+        .catch(err => {
+            messageDiv.textContent = 'Error: ' + err.message;
+            messageDiv.className = 'message error';
+            setTimeout(() => { messageDiv.style.display = 'none'; }, 3000);
+        });
+}
 
 function selectEffect() {
     const effect = document.getElementById('effect-select').value;
