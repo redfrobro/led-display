@@ -13,7 +13,7 @@ logger = logging.getLogger('led-demos')
 @effect('text', 'Text Display',
         category='special',
         text=(None, "Text to display (None = load from config)"),
-        font_name=('6x10.bdf', "BDF font file from fonts/ folder"),
+        font_name=('5x8.bdf', "BDF font file from fonts/ folder"),
         scroll_speed=(2.0, "Scroll speed in pixels/sec (0 = static)"),
         color_hue=(200, "Text color hue 0-360"))
 def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
@@ -44,7 +44,7 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
     # Default config values
     defaults = {
         'text': 'Hello World',
-        'font_name': '6x10.bdf',
+        'font_name': '5x8.bdf',
         'color_hue': 200,
         'scroll_speed': 2.0
     }

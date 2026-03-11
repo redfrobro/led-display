@@ -1041,7 +1041,7 @@ def display_startup_info(ctx, duration=15):
         logger.info(f"Displaying startup network info")
 
         config = load_text_effect_config()
-        font_name = config.get('font_name', '6x10.bdf')
+        font_name = config.get('font_name', '5x8.bdf')
         color_hue = config.get('color_hue', 200)
 
         if ctx.matrix:
