@@ -409,7 +409,7 @@ class DaemonController:
 
         # Display network info on startup
         ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=self.should_interrupt)
-        display_startup_info(ctx, duration=5)
+        display_startup_info(ctx)
 
         loop_count = 0
 
@@ -1021,7 +1021,7 @@ def setup_logging(verbose):
         logger.info("Verbose logging enabled")
 
 
-def display_startup_info(ctx, duration=5):
+def display_startup_info(ctx, duration=15):
     """Display network information on startup"""
     try:
         network_info = get_network_info()
@@ -1033,14 +1033,13 @@ def display_startup_info(ctx, duration=5):
 
         config = load_text_effect_config()
         font_name = config.get('font_name', '6x10.bdf')
-        scroll_speed = config.get('scroll_speed', 2.0)
         color_hue = config.get('color_hue', 200)
 
         if ctx.matrix:
             run_effect('text', ctx, duration, 5, {
                 'text': text,
                 'font_name': font_name,
-                'scroll_speed': scroll_speed,
+                'scroll_speed': 0,
                 'color_hue': color_hue
             })
             ctx.matrix.Clear()
@@ -1244,7 +1243,7 @@ if __name__ == "__main__":
         ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=lambda: False)
 
         # Display network info on startup
-        display_startup_info(ctx, duration=5)
+        display_startup_info(ctx)
 
         try:
             loop_count = 0
