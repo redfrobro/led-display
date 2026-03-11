@@ -1,0 +1,20 @@
+# PyCharm
+.idea/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Backup files
+*.backup
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Runtime files
+*.pid
+*.sock
+*.log
