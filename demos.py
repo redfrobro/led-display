@@ -59,7 +59,7 @@ def get_network_info():
     try:
         hostname = socket.gethostname()
         info.append(f"Host: {hostname}")
-        info.append(f"  pi.local: http://{hostname}.local")
+        info.append(f"  pi.local: http://{hostname}.jevin")
     except Exception as e:
         logger.warning(f"Could not get hostname: {e}")
 
@@ -1026,9 +1026,18 @@ def display_startup_info(ctx, duration=15):
     try:
         network_info = get_network_info()
         if not network_info:
-            network_info = ["No network info"]
+            network_info = ["No network", "info"]
 
-        text = "\n".join(network_info)
+        # Show at most 2 lines: prefer IP and URL
+        # Pick the first IP line and the first http:// line
+        ip_line = next((l for l in network_info if l.startswith("IP:")), None)
+        url_line = next((l.strip() for l in network_info if "http://" in l and not "jevin" in l), None)
+        if ip_line and url_line:
+            display_lines = [ip_line, url_line]
+        else:
+            display_lines = [l.strip() for l in network_info[:2]]
+
+        text = "\n".join(display_lines)
         logger.info(f"Displaying startup network info")
 
         config = load_text_effect_config()

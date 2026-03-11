@@ -141,54 +141,91 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
                 total_width += char_width
         return total_width
 
-    # Measure text width with tight spacing
-    text_width = measure_text_tight(font, text)
+    # Split text into lines
+    lines = text.split('\n') if '\n' in text else [text]
 
-    # Calculate vertical position (try to center)
+    # Font metrics
     if hasattr(font, 'height'):
         font_height = font.height
         baseline = font.baseline if hasattr(font, 'baseline') else font_height
-        y_pos = (ctx.rows - font_height) // 2 + baseline
     else:
-        y_pos = ctx.rows // 2
+        font_height = 8
+        baseline = 8
+
+    line_spacing = font_height + 1
+    total_height = len(lines) * font_height + (len(lines) - 1)
+    start_y = (ctx.rows - total_height) // 2 + baseline
 
     start_time = time.time()
-    scroll_offset = 0
 
-    # Determine if we need to scroll
-    needs_scroll = text_width > ctx.cols and scroll_speed > 0
+    if len(lines) > 1:
+        # Multi-line static mode: center each line horizontally, stack vertically
+        line_widths = [measure_text_tight(font, line) for line in lines]
+        max_width = max(line_widths) if line_widths else ctx.cols
 
-    if needs_scroll:
-        # Scrolling mode
-        total_scroll_width = text_width + ctx.cols
-
-        while True:
-            if ctx.check_interrupt():
-                return
-            if duration > 0 and time.time() - start_time >= duration:
-                return
-
+        if scroll_speed > 0 and max_width > ctx.cols:
+            # Scroll all lines together at the same horizontal offset
+            total_scroll_width = max_width + ctx.cols
+            scroll_offset = 0
+            while True:
+                if ctx.check_interrupt():
+                    return
+                if duration > 0 and time.time() - start_time >= duration:
+                    return
+                canvas.Clear()
+                for i, (line, lw) in enumerate(zip(lines, line_widths)):
+                    x_pos = ctx.cols - scroll_offset
+                    y_pos = start_y + i * line_spacing
+                    draw_text_tight(canvas, font, x_pos, y_pos, text_color, line)
+                canvas = ctx.matrix.SwapOnVSync(canvas)
+                scroll_offset += scroll_speed * 0.05
+                if scroll_offset > total_scroll_width:
+                    scroll_offset = 0
+                time.sleep(0.05)
+        else:
+            # Static multi-line: center each line individually
             canvas.Clear()
-            x_pos = ctx.cols - scroll_offset
-            draw_text_tight(canvas, font, x_pos, y_pos, text_color, text)
+            for i, (line, lw) in enumerate(zip(lines, line_widths)):
+                x_pos = max(0, (ctx.cols - lw) // 2)
+                y_pos = start_y + i * line_spacing
+                draw_text_tight(canvas, font, x_pos, y_pos, text_color, line)
             canvas = ctx.matrix.SwapOnVSync(canvas)
-
-            scroll_offset += scroll_speed * 0.05
-            if scroll_offset > total_scroll_width:
-                scroll_offset = 0
-
-            time.sleep(0.05)
+            while True:
+                if ctx.check_interrupt():
+                    return
+                if duration > 0 and time.time() - start_time >= duration:
+                    return
+                time.sleep(0.1)
     else:
-        # Static centered mode
-        x_pos = (ctx.cols - text_width) // 2
+        # Single-line mode
+        text_width = measure_text_tight(font, lines[0])
+        y_pos = start_y
+        needs_scroll = text_width > ctx.cols and scroll_speed > 0
 
-        canvas.Clear()
-        draw_text_tight(canvas, font, x_pos, y_pos, text_color, text)
-        canvas = ctx.matrix.SwapOnVSync(canvas)
-
-        while True:
-            if ctx.check_interrupt():
-                return
-            if duration > 0 and time.time() - start_time >= duration:
-                return
-            time.sleep(0.1)
+        if needs_scroll:
+            total_scroll_width = text_width + ctx.cols
+            scroll_offset = 0
+            while True:
+                if ctx.check_interrupt():
+                    return
+                if duration > 0 and time.time() - start_time >= duration:
+                    return
+                canvas.Clear()
+                x_pos = ctx.cols - scroll_offset
+                draw_text_tight(canvas, font, x_pos, y_pos, text_color, lines[0])
+                canvas = ctx.matrix.SwapOnVSync(canvas)
+                scroll_offset += scroll_speed * 0.05
+                if scroll_offset > total_scroll_width:
+                    scroll_offset = 0
+                time.sleep(0.05)
+        else:
+            x_pos = max(0, (ctx.cols - text_width) // 2)
+            canvas.Clear()
+            draw_text_tight(canvas, font, x_pos, y_pos, text_color, lines[0])
+            canvas = ctx.matrix.SwapOnVSync(canvas)
+            while True:
+                if ctx.check_interrupt():
+                    return
+                if duration > 0 and time.time() - start_time >= duration:
+                    return
+                time.sleep(0.1)
