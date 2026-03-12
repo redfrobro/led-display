@@ -6,6 +6,8 @@ This module provides:
 - EffectContext: Encapsulates matrix and utilities for effects
 """
 
+from random import randrange
+from . import utils
 from .utils import hsv_to_rgb, fast_sin, DIST_TABLE, ANGLE_TABLE, ROWS, COLS
 
 # Central registry of all effects
@@ -103,6 +105,18 @@ class EffectContext:
     def cols(self):
         """Display width in pixels."""
         return self._cols
+
+    def random_hue(self):
+        """Return a random hue consistent with the active mood.
+
+        For mono moods: varies within ±hue_range of the locked hue.
+        For all other moods: full 0-360 range (shift/sat applied at render).
+        """
+        mood = utils._active_mood
+        if mood and 'hue_lock' in mood:
+            r = mood.get('hue_range', 0)
+            return (mood['hue_lock'] + randrange(-r, r + 1)) % 360
+        return randrange(360)
 
     def check_interrupt(self):
         """Check if the effect should stop.

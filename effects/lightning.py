@@ -58,7 +58,7 @@ def lightning(ctx, duration=8, frequency=5, branches=True, fade=1.0, color=240, 
                         points.append((bx, by))
 
             max_life = randrange(5, 12)
-            bolt_hue = randrange(360) if color < 0 else color
+            bolt_hue = ctx.random_hue() if color < 0 else color
             bolts.append({'points': points, 'life': max_life, 'max_life': max_life, 'hue': bolt_hue})
 
         time.sleep(0.04)

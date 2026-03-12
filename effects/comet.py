@@ -15,7 +15,7 @@ def comet(ctx, duration=8, frequency=5, trail=25, speed=0.15, check_interrupt=No
     """Orbiting comet with colorful trail"""
     trail_points = []
     angle = 0
-    hue = randrange(360)
+    hue = ctx.random_hue()
 
     start_time = time.time()
     while time.time() - start_time < duration:

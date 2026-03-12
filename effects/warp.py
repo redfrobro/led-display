@@ -24,7 +24,7 @@ def warp(ctx, duration=8, frequency=5, star_count=200, speed=1.0, check_interrup
             'angle': angle,
             'dist': dist,
             'speed': random() * 0.5 + 0.5,
-            'hue': randrange(180, 240)  # Blue-white spectrum
+            'hue': ctx.random_hue()
         })
 
     start_time = time.time()
@@ -43,7 +43,7 @@ def warp(ctx, duration=8, frequency=5, star_count=200, speed=1.0, check_interrup
             if star['dist'] > 2:
                 star['dist'] = random() * 0.1 + 0.05
                 star['angle'] = random() * 2 * math.pi
-                star['hue'] = randrange(180, 240)
+                star['hue'] = ctx.random_hue()
                 continue
 
             # Draw streak (from old to new position)

@@ -17,7 +17,7 @@ def pulse(ctx, duration=8, frequency=5, sources=3, speed=1.0, check_interrupt=No
     sources = max(1, int(sources))
     pulses = []
     # Generate source points
-    source_points = [(randrange(10, ctx.cols-10), randrange(5, ctx.rows-5), randrange(360))
+    source_points = [(randrange(10, ctx.cols-10), randrange(5, ctx.rows-5), ctx.random_hue())
                      for _ in range(sources)]
 
     start_time = time.time()

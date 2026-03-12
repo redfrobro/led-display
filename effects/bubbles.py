@@ -32,7 +32,7 @@ def bubbles(ctx, duration=8, frequency=5, size=2, wobble=2, check_interrupt=None
                 'speed': random() * 0.5 + 0.5,
                 'wobble_offset': random() * 2,
                 'size': randrange(1, max_size + 1),
-                'hue': randrange(360)
+                'hue': ctx.random_hue()
             })
 
         # Update and draw bubbles

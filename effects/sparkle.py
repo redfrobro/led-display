@@ -22,7 +22,7 @@ def sparkle(ctx, duration=8, frequency=5, saturation=0.3, check_interrupt=None, 
         # Add new stars
         for _ in range(stars_per_frame):
             x, y = randrange(ctx.cols), randrange(ctx.rows)
-            hue = randrange(360)
+            hue = ctx.random_hue()
             stars[(x, y)] = {'brightness': 0, 'direction': 1, 'hue': hue, 'max': randrange(150, 255), 'sat': saturation}
 
         # Update and render stars

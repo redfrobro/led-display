@@ -15,7 +15,7 @@ def life(ctx, duration=8, frequency=5, density=30, colorful=True, check_interrup
     """Conway's Game of Life with colorful cells"""
     # Initialize random grid
     grid = [[randrange(100) < density for x in range(ctx.cols)] for y in range(ctx.rows)]
-    colors = [[randrange(360) if grid[y][x] else 0 for x in range(ctx.cols)] for y in range(ctx.rows)]
+    colors = [[ctx.random_hue() if grid[y][x] else 0 for x in range(ctx.cols)] for y in range(ctx.rows)]
     generation = 0
 
     start_time = time.time()
@@ -72,7 +72,7 @@ def life(ctx, duration=8, frequency=5, density=30, colorful=True, check_interrup
         alive = sum(sum(row) for row in grid)
         if alive < 10 or (generation > 50 and alive < 30):
             grid = [[randrange(100) < density for x in range(ctx.cols)] for y in range(ctx.rows)]
-            colors = [[randrange(360) if grid[y][x] else 0 for x in range(ctx.cols)] for y in range(ctx.rows)]
+            colors = [[ctx.random_hue() if grid[y][x] else 0 for x in range(ctx.cols)] for y in range(ctx.rows)]
             generation = 0
 
         time.sleep(0.1)

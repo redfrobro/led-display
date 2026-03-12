@@ -26,7 +26,7 @@ def fireworks(ctx, duration=8, frequency=5, particles=30, gravity=0.1, check_int
         # Launch new firework
         if randrange(int(spawn_rate)) == 0:
             x = randrange(10, ctx.cols - 10)
-            hue = randrange(360)
+            hue = ctx.random_hue()
             for _ in range(particles):
                 angle = random() * 2 * math.pi
                 spd = random() * 3 + 1

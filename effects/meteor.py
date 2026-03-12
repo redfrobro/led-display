@@ -32,7 +32,7 @@ def meteor(ctx, duration=8, frequency=5, length=12, speed=1.0, check_interrupt=N
                 'y': randrange(-10, 0),
                 'speed': randrange(2, 4),
                 'length': randrange(min_len, max_len),
-                'hue': choice([0, 30, 200, 280])
+                'hue': ctx.random_hue()
             })
 
         # Update and draw meteors
