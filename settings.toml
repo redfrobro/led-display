@@ -1,0 +1,46 @@
+# LED Matrix Settings
+# All values here are defaults — command-line arguments override them.
+
+[display]
+rows            = 32            # Display height in pixels
+cols            = 64            # Display width in pixels
+hardware_mapping = "adafruit-hat"  # HAT type (adafruit-hat, regular, etc.)
+parallel        = 1             # Number of parallel chains
+
+[daemon]
+duration        = 8             # Seconds per effect (0 = forever)
+frequency       = 5             # Spawn rate for particle effects (1-10)
+pause           = 0.5           # Seconds between effects
+brightness      = 100           # Initial brightness (0-100)
+speed           = 1.0           # Initial animation speed (0.1-5.0)
+port            = 80            # Web server port (80 requires sudo)
+socket          = "/tmp/led-matrix.sock"
+
+[startup]
+display_duration = 15           # Seconds to show IP address on boot
+font             = "4x6.bdf"   # Font used for startup IP display
+
+# Custom mood presets — added on top of the built-ins.
+# Built-in moods: default, mono_red, mono_orange, mono_yellow, mono_green,
+#                 mono_cyan, mono_blue, mono_purple, warm, cool,
+#                 pastel, night, grayscale
+#
+# Available keys per preset:
+#   hue_lock    = 0-360   Lock all hues to a single value (monochrome)
+#   hue_range   = 0-180   ±degrees of variation around hue_lock
+#   hue_shift   = -360-360  Rotate all hues by this many degrees
+#   sat_override = 0.0-1.0  Force saturation to this value
+#   sat_mult    = 0.0-1.0  Multiply saturation by this factor
+#   val_mult    = 0.0-1.0  Multiply brightness by this factor
+#
+# Example:
+# [mood_presets.mono_teal]
+# hue_lock  = 165
+# sat_override = 1.0
+# hue_range = 15
+#
+# [mood_presets.ember]
+# hue_lock  = 15
+# sat_override = 0.9
+# hue_range = 20
+# val_mult  = 0.8

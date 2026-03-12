@@ -36,15 +36,21 @@ from effects import (
     hsv_to_rgb
 )
 from effects.utils import set_mood, get_mood, MOOD_PRESETS
+import config as _cfg
 
-ROWS = 32
-COLS = 64
+# Register any custom mood presets from settings.toml
+for _name, _preset in _cfg.settings.get('mood_presets', {}).items():
+    MOOD_PRESETS[_name] = _preset
+
+_display = _cfg.settings['display']
+ROWS = _display['rows']
+COLS = _display['cols']
 
 options = RGBMatrixOptions()
-options.hardware_mapping = 'adafruit-hat'
+options.hardware_mapping = _display['hardware_mapping']
 options.rows = ROWS
 options.cols = COLS
-options.parallel = 1
+options.parallel = _display['parallel']
 
 # Matrix will be initialized later (after fork in daemon mode, or now in normal mode)
 matrix = None
@@ -142,10 +148,10 @@ def init_matrix(for_daemon=False):
 
     if for_daemon:
         daemon_options = RGBMatrixOptions()
-        daemon_options.hardware_mapping = 'adafruit-hat'
+        daemon_options.hardware_mapping = _display['hardware_mapping']
         daemon_options.rows = ROWS
         daemon_options.cols = COLS
-        daemon_options.parallel = 1
+        daemon_options.parallel = _display['parallel']
         daemon_options.drop_privileges = False
         daemon_options.disable_hardware_pulsing = True
         matrix = RGBMatrix(options=daemon_options)
@@ -353,8 +359,8 @@ class DaemonController:
 
         # Adjustable parameters
         self.frequency = args.frequency
-        self.brightness = 100
-        self.speed = 1.0
+        self.brightness = _cfg.settings['daemon']['brightness']
+        self.speed = _cfg.settings['daemon']['speed']
         self.duration = args.duration
         self.effect_options = EFFECT_OPTIONS.copy()
 
@@ -1007,25 +1013,25 @@ Effect-specific options (use --list-opts to see all):
                         help="Comma-separated list of effects to run (e.g., fireworks,matrix,starfield)")
     parser.add_argument("--playlist", type=str, default=None,
                         help="Load custom playlist (e.g., 'my-custom')")
-    parser.add_argument("-d", "--duration", type=float, default=8,
+    parser.add_argument("-d", "--duration", type=float, default=_cfg.settings['daemon']['duration'],
                         help="Duration of each effect in seconds (0 = run forever, default: 8)")
     parser.add_argument("-s", "--shuffle", action="store_true",
                         help="Randomize the order of effects")
     parser.add_argument("--loops", type=int, default=0,
                         help="Number of loops (0 = infinite, default: 0)")
-    parser.add_argument("-f", "--frequency", type=int, default=5, choices=range(1, 11),
+    parser.add_argument("-f", "--frequency", type=int, default=_cfg.settings['daemon']['frequency'], choices=range(1, 11),
                         metavar="1-10", help="Spawn frequency for effects like fireworks/lightning (1=rare, 10=frequent, default: 5)")
-    parser.add_argument("--pause", type=float, default=0.5,
+    parser.add_argument("--pause", type=float, default=_cfg.settings['daemon']['pause'],
                         help="Pause between effects in seconds (default: 0.5)")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Enable verbose logging for troubleshooting")
     parser.add_argument("--daemon", action="store_true",
                         help="Run as a daemon with IPC control socket")
-    parser.add_argument("--socket", type=str, default="/tmp/led-matrix.sock",
+    parser.add_argument("--socket", type=str, default=_cfg.settings['daemon']['socket'],
                         help="Unix socket path for daemon mode (default: /tmp/led-matrix.sock)")
     parser.add_argument("--webserver", action="store_true",
                         help="Run web server for browser-based control (requires Flask)")
-    parser.add_argument("--port", type=int, default=80,
+    parser.add_argument("--port", type=int, default=_cfg.settings['daemon']['port'],
                         help="Port for web server (default: 80, requires sudo)")
     return parser.parse_args()
 
@@ -1043,8 +1049,10 @@ def setup_logging(verbose):
         logger.info("Verbose logging enabled")
 
 
-def display_startup_info(ctx, duration=15):
+def display_startup_info(ctx, duration=None):
     """Display network information on startup"""
+    if duration is None:
+        duration = _cfg.settings['startup']['display_duration']
     try:
         network_info = get_network_info()
         if not network_info:
@@ -1071,7 +1079,7 @@ def display_startup_info(ctx, duration=15):
         if ctx.matrix:
             run_effect('text', ctx, duration, 5, {
                 'text': text,
-                'font_name': '4x6.bdf',
+                'font_name': _cfg.settings['startup']['font'],
                 'scroll_speed': 0,
                 'color_hue': color_hue
             })
