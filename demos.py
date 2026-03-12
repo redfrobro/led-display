@@ -1028,26 +1028,28 @@ def display_startup_info(ctx, duration=15):
         if not network_info:
             network_info = ["No network", "info"]
 
-        # Show at most 2 lines: prefer IP and URL
-        # Pick the first IP line and the first http:// line
+        # Build 2 compact lines: bare IP and bare hostname
         ip_line = next((l for l in network_info if l.startswith("IP:")), None)
-        url_line = next((l.strip() for l in network_info if "http://" in l and not "jevin" in l), None)
-        if ip_line and url_line:
-            display_lines = [ip_line, url_line]
+        host_line = next((l for l in network_info if l.startswith("Host:")), None)
+        line1 = ip_line.replace("IP: ", "").strip() if ip_line else None
+        line2 = host_line.replace("Host: ", "").strip() if host_line else None
+        if line1 and line2:
+            display_lines = [line1, line2]
+        elif line1:
+            display_lines = [line1]
         else:
             display_lines = [l.strip() for l in network_info[:2]]
 
         text = "\n".join(display_lines)
-        logger.info(f"Displaying startup network info")
+        logger.info(f"Displaying startup network info: {display_lines}")
 
         config = load_text_effect_config()
-        font_name = config.get('font_name', '5x8.bdf')
         color_hue = config.get('color_hue', 200)
 
         if ctx.matrix:
             run_effect('text', ctx, duration, 5, {
                 'text': text,
-                'font_name': font_name,
+                'font_name': '4x6.bdf',
                 'scroll_speed': 0,
                 'color_hue': color_hue
             })
