@@ -35,6 +35,7 @@ from effects import (
     LOW_POWER_ORDER, HIGH_POWER_ORDER, NIGHT_MODE, DEFAULT_ORDER,
     hsv_to_rgb
 )
+from effects.utils import set_mood, get_mood, MOOD_PRESETS
 
 ROWS = 32
 COLS = 64
@@ -342,6 +343,7 @@ class DaemonController:
         self.running = True
         self.effects_running = True
         self.paused = False
+        self.mood = 'default'
         self.current_effect = None
         self.effect_index = 0
         self.skip_to_next = False
@@ -520,7 +522,8 @@ class DaemonController:
                     "playback_mode": self.playback_mode,
                     "playlist": self.current_playlist_name,
                     "playlist_effect_count": len(self.effect_keys) if self.current_playlist_name else None,
-                    "effects_running": self.effects_running
+                    "effects_running": self.effects_running,
+                    "mood": self.mood
                 }
 
             elif command == "next":
@@ -576,6 +579,19 @@ class DaemonController:
                     return {"status": "ok", "message": "Effects started"}
                 else:
                     return {"status": "ok", "message": "Effects already running"}
+
+            elif command == "mood":
+                if not arg or arg == 'default':
+                    self.mood = 'default'
+                    set_mood(None)
+                    return {"status": "ok", "message": "Mood reset to default", "mood": "default"}
+                elif arg in MOOD_PRESETS:
+                    self.mood = arg
+                    set_mood(arg)
+                    return {"status": "ok", "message": f"Mood set to {arg}", "mood": arg}
+                else:
+                    available = ', '.join(k for k in MOOD_PRESETS if k != 'default')
+                    return {"status": "error", "message": f"Unknown mood '{arg}'. Available: {available}"}
 
             elif command == "list":
                 effects = [{"key": k, "name": DEMOS[k][0]} for k in self.effect_keys]
@@ -707,6 +723,12 @@ class DaemonController:
                     self.skip_to_next = False
                     self.skip_to_prev = False
                     self.jump_to_effect = True
+
+                    # Apply playlist mood if defined
+                    playlist_mood = playlist_data.get('mood')
+                    if playlist_mood and playlist_mood in MOOD_PRESETS:
+                        self.mood = playlist_mood
+                        set_mood(playlist_mood)
 
                     return {
                         "status": "ok",

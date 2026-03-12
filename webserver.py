@@ -46,7 +46,8 @@ def get_status():
                 'speed': response.get('speed', 1.0),
                 'frequency': response.get('frequency', 5),
                 'mode': response.get('playback_mode', 'playlist'),
-                'effects_running': response.get('effects_running', True)
+                'effects_running': response.get('effects_running', True),
+                'mood': response.get('mood', 'default')
             })
         else:
             return jsonify({'status': 'offline'})

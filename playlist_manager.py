@@ -168,6 +168,15 @@ def validate_playlist(data: dict) -> Tuple[bool, Optional[str]]:
     if not isinstance(data['effects'], list):
         return False, "Effects must be a list"
 
+    # Validate optional mood field
+    if 'mood' in data and data['mood'] is not None:
+        try:
+            from effects.utils import MOOD_PRESETS
+            if data['mood'] not in MOOD_PRESETS:
+                return False, f"Unknown mood: {data['mood']}"
+        except ImportError:
+            pass  # Skip mood validation without rgbmatrix
+
     # Import DEMOS to validate effect keys
     try:
         from effects import DEMOS
@@ -289,6 +298,7 @@ def create_playlist(name: str, description: str = "") -> dict:
         "version": "1.0",
         "created": now,
         "modified": now,
+        "mood": None,
         "effects": []
     }
 

@@ -103,6 +103,14 @@ function updateStatus() {
                 lastSentValues.frequency = frequency;
             }
 
+            // Update mood display and dropdown
+            const mood = data.mood || 'default';
+            document.getElementById('mood-display').textContent = mood;
+            const moodSelect = document.getElementById('mood-select');
+            if (moodSelect && moodSelect.value !== mood) {
+                moodSelect.value = mood;
+            }
+
             // Update daemon control buttons based on effects_running
             const effectsRunning = data.effects_running !== false;
             const stopBtn = document.getElementById('stop-btn');
@@ -194,6 +202,11 @@ function sendCommand(cmd, args = null) {
 
 // Debounced version of sendCommand for sliders
 const debouncedSendCommand = debounce(sendCommand, 300);
+
+function setMood() {
+    const mood = document.getElementById('mood-select').value;
+    sendCommand('mood', mood);
+}
 
 function stopEffects() {
     sendCommand('stop');
@@ -553,6 +566,7 @@ async function showPlaylistEditor() {
         document.getElementById('editor-playlist-name').textContent = name;
         document.getElementById('editor-playlist-description').textContent = currentPlaylistData.description || 'No description';
         document.getElementById('editor-playlist-count').textContent = currentPlaylistData.effects.length;
+        document.getElementById('editor-mood').value = currentPlaylistData.mood || '';
         renderPlaylistEffects();
         document.getElementById('playlist-editor-modal').style.display = 'flex';
     } catch (error) {
@@ -920,6 +934,8 @@ function closeEffectEditor() {
 
 async function savePlaylistChanges() {
     const name = document.getElementById('editor-playlist-name').textContent;
+    const mood = document.getElementById('editor-mood').value || null;
+    currentPlaylistData.mood = mood;
     try {
         const response = await fetch('/api/playlist/' + name, {
             method: 'PUT',
