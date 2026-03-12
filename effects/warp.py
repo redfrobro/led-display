@@ -19,7 +19,7 @@ def warp(ctx, duration=8, frequency=5, star_count=200, speed=1.0, check_interrup
 
     for _ in range(star_count):
         angle = random() * 2 * math.pi
-        dist = random() * 0.5 + 0.1
+        dist = random() * 1.9 + 0.05  # spread across full lifecycle to avoid reset waves
         stars.append({
             'angle': angle,
             'dist': dist,
