@@ -203,6 +203,33 @@ function sendCommand(cmd, args = null) {
 // Debounced version of sendCommand for sliders
 const debouncedSendCommand = debounce(sendCommand, 300);
 
+function loadMoods() {
+    fetch('/api/moods')
+        .then(response => response.json())
+        .then(data => {
+            const moods = data.moods || ['default'];
+            // Populate both the control dropdown and the playlist editor dropdown
+            const selects = ['mood-select', 'editor-mood'];
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                const current = sel.value;
+                // Keep the first option (placeholder) for editor-mood
+                const placeholder = id === 'editor-mood' ? sel.options[0] : null;
+                sel.innerHTML = '';
+                if (placeholder) sel.appendChild(placeholder);
+                moods.forEach(mood => {
+                    const opt = document.createElement('option');
+                    opt.value = mood;
+                    opt.textContent = mood;
+                    sel.appendChild(opt);
+                });
+                if (current) sel.value = current;
+            });
+        })
+        .catch(err => console.error('Failed to load moods:', err));
+}
+
 function setMood() {
     const mood = document.getElementById('mood-select').value;
     sendCommand('mood', mood);
@@ -1017,6 +1044,7 @@ function init() {
     updateStatus();
     loadEffects();
     loadPlaylists();
+    loadMoods();
     setInterval(updateStatus, 2000);
 }
 

@@ -210,6 +210,16 @@ def send_control_command():
         print(f"Error sending command {cmd}: {e}")
         return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
+@app.route('/api/moods')
+def get_moods():
+    """Return available mood preset names"""
+    try:
+        from effects.utils import MOOD_PRESETS
+        return jsonify({'moods': list(MOOD_PRESETS.keys())})
+    except Exception as e:
+        return jsonify({'moods': ['default']})
+
+
 @app.route('/api/start', methods=['POST'])
 def start_effects():
     """Start/restart the LED effects"""

@@ -23,27 +23,10 @@ def fast_sin(x):
     return SIN_TABLE[int(x * 8) & 255]
 
 
-# Named color mood presets
-# hue_lock: fix all hues to this value (monochrome)
-# hue_shift: rotate all hues by this many degrees
-# sat_mult: multiply saturation (0=grayscale, 0.4=pastel, 1=unchanged)
-# sat_override: force saturation to a fixed value regardless of effect
-# val_mult: multiply value/brightness
-MOOD_PRESETS = {
-    'default':     {},
-    'mono_red':    {'hue_lock': 0,   'sat_override': 1.0, 'hue_range': 15},
-    'mono_orange': {'hue_lock': 30,  'sat_override': 1.0, 'hue_range': 15},
-    'mono_yellow': {'hue_lock': 60,  'sat_override': 1.0, 'hue_range': 15},
-    'mono_green':  {'hue_lock': 120, 'sat_override': 1.0, 'hue_range': 15},
-    'mono_cyan':   {'hue_lock': 180, 'sat_override': 1.0, 'hue_range': 15},
-    'mono_blue':   {'hue_lock': 240, 'sat_override': 1.0, 'hue_range': 15},
-    'mono_purple': {'hue_lock': 280, 'sat_override': 1.0, 'hue_range': 15},
-    'warm':        {'hue_shift': -40},
-    'cool':        {'hue_shift': 60},
-    'pastel':      {'sat_mult': 0.4},
-    'night':       {'sat_mult': 0.7, 'val_mult': 0.5},
-    'grayscale':   {'sat_mult': 0.0},
-}
+# Mood presets — populated at startup from settings.toml via config.py.
+# Keys: hue_lock, hue_range, hue_shift, sat_override, sat_mult, val_mult
+# See settings.toml [mood_presets.*] sections to add or edit moods.
+MOOD_PRESETS = {}
 
 _active_mood_name = 'default'
 _active_mood = {}
