@@ -27,16 +27,17 @@ def fast_sin(x):
 # hue_lock: fix all hues to this value (monochrome)
 # hue_shift: rotate all hues by this many degrees
 # sat_mult: multiply saturation (0=grayscale, 0.4=pastel, 1=unchanged)
+# sat_override: force saturation to a fixed value regardless of effect
 # val_mult: multiply value/brightness
 MOOD_PRESETS = {
     'default':     {},
-    'mono_red':    {'hue_lock': 0},
-    'mono_orange': {'hue_lock': 30},
-    'mono_yellow': {'hue_lock': 60},
-    'mono_green':  {'hue_lock': 120},
-    'mono_cyan':   {'hue_lock': 180},
-    'mono_blue':   {'hue_lock': 240},
-    'mono_purple': {'hue_lock': 280},
+    'mono_red':    {'hue_lock': 0,   'sat_override': 1.0},
+    'mono_orange': {'hue_lock': 30,  'sat_override': 1.0},
+    'mono_yellow': {'hue_lock': 60,  'sat_override': 1.0},
+    'mono_green':  {'hue_lock': 120, 'sat_override': 1.0},
+    'mono_cyan':   {'hue_lock': 180, 'sat_override': 1.0},
+    'mono_blue':   {'hue_lock': 240, 'sat_override': 1.0},
+    'mono_purple': {'hue_lock': 280, 'sat_override': 1.0},
     'warm':        {'hue_shift': -40},
     'cool':        {'hue_shift': 60},
     'pastel':      {'sat_mult': 0.4},
@@ -71,7 +72,10 @@ def hsv_to_rgb(h, s, v):
             h = _active_mood['hue_lock']
         else:
             h = (h + _active_mood.get('hue_shift', 0)) % 360
-        s = min(1.0, s * _active_mood.get('sat_mult', 1.0))
+        if 'sat_override' in _active_mood:
+            s = _active_mood['sat_override']
+        else:
+            s = min(1.0, s * _active_mood.get('sat_mult', 1.0))
         v = min(1.0, v * _active_mood.get('val_mult', 1.0))
     h = h % 360
     c = v * s
