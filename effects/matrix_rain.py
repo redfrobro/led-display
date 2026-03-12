@@ -35,8 +35,8 @@ def matrix_rain(ctx, duration=8, frequency=5, speed=1.0, length=10, check_interr
                 y = int(drop['y'] - i)
                 if 0 <= y < ctx.rows:
                     if i == 0:
-                        r, g, b = hsv_to_rgb(120, 0.2, 1.0)
-                        ctx.matrix.SetPixel(drop['x'], y, r, g, b)
+                        r, g, b = hsv_to_rgb(120, 1.0, 1.0)
+                        ctx.matrix.SetPixel(drop['x'], y, min(255, r + 200), min(255, g + 200), min(255, b + 200))
                     else:
                         r, g, b = hsv_to_rgb(120, 1.0, 1 - i / drop['length'])
                         ctx.matrix.SetPixel(drop['x'], y, r, g, b)
