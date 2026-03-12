@@ -4,6 +4,7 @@ import time
 from random import randrange
 
 from .base import effect
+from .utils import hsv_to_rgb
 
 
 @effect('matrix', 'Matrix Rain',
@@ -34,10 +35,11 @@ def matrix_rain(ctx, duration=8, frequency=5, speed=1.0, length=10, check_interr
                 y = int(drop['y'] - i)
                 if 0 <= y < ctx.rows:
                     if i == 0:
-                        ctx.matrix.SetPixel(drop['x'], y, 200, 255, 200)
+                        r, g, b = hsv_to_rgb(120, 0.2, 1.0)
+                        ctx.matrix.SetPixel(drop['x'], y, r, g, b)
                     else:
-                        intensity = int(255 * (1 - i / drop['length']))
-                        ctx.matrix.SetPixel(drop['x'], y, 0, intensity, 0)
+                        r, g, b = hsv_to_rgb(120, 1.0, 1 - i / drop['length'])
+                        ctx.matrix.SetPixel(drop['x'], y, r, g, b)
 
             drop['y'] += drop['speed'] * speed
             if drop['y'] - drop['length'] > ctx.rows:

@@ -4,6 +4,7 @@ import time
 from random import randrange, choice
 
 from .base import effect
+from .utils import hsv_to_rgb
 
 
 @effect('balls', 'Bouncing Balls',
@@ -16,7 +17,7 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
     count = max(1, int(count))
     size = max(0, int(size))
     ball_list = []
-    colors = [(255, 50, 50), (50, 255, 50), (50, 50, 255), (255, 255, 50), (255, 50, 255), (50, 255, 255)]
+    default_hues = [0, 120, 240, 60, 300, 180]
 
     for i in range(count):
         ball_list.append({
@@ -24,7 +25,7 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
             'y': randrange(5, ctx.rows-5),
             'vx': choice([-2, -1, 1, 2]),
             'vy': choice([-2, -1, 1, 2]),
-            'color': colors[i % len(colors)],
+            'hue': default_hues[i % len(default_hues)],
             'trail': []
         })
 
@@ -38,17 +39,16 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
             # Draw trail
             for i, pos in enumerate(ball['trail']):
                 fade = (i + 1) / len(ball['trail']) if ball['trail'] else 1
-                r = int(ball['color'][0] * fade * 0.5)
-                g = int(ball['color'][1] * fade * 0.5)
-                b = int(ball['color'][2] * fade * 0.5)
+                r, g, b = hsv_to_rgb(ball['hue'], 1.0, fade * 0.5)
                 ctx.matrix.SetPixel(int(pos[0]), int(pos[1]), r, g, b)
 
             # Draw ball
+            br, bg, bb = hsv_to_rgb(ball['hue'], 1.0, 1.0)
             for dx in range(-size, size + 1):
                 for dy in range(-size, size + 1):
                     px, py = int(ball['x']) + dx, int(ball['y']) + dy
                     if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
-                        ctx.matrix.SetPixel(px, py, *ball['color'])
+                        ctx.matrix.SetPixel(px, py, br, bg, bb)
 
             # Update trail
             ball['trail'].append((ball['x'], ball['y']))

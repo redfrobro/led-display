@@ -4,6 +4,7 @@ import time
 from random import randrange, random
 
 from .base import effect
+from .utils import hsv_to_rgb
 
 
 @effect('ripple', 'Ripple Pond',
@@ -42,16 +43,17 @@ def ripple(ctx, duration=8, frequency=5, auto_drops=True, drop_rate=30, check_in
         water = new_water
 
         # Render
+        bg_r, bg_g, bg_b = hsv_to_rgb(210, 0.5, 0.16)
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 height = water[y][x]
                 if height > 0:
-                    blue = min(255, int(100 + height))
-                    green = min(255, int(50 + height * 0.5))
-                    white = min(255, max(0, int(height - 100)))
-                    ctx.matrix.SetPixel(x, y, white, green + white // 2, blue)
+                    v = min(1.0, (100 + height) / 255)
+                    s = max(0.0, 1.0 - height / 200)
+                    r, g, b = hsv_to_rgb(210, s, v)
+                    ctx.matrix.SetPixel(x, y, r, g, b)
                 else:
-                    ctx.matrix.SetPixel(x, y, 0, 20, 40)
+                    ctx.matrix.SetPixel(x, y, bg_r, bg_g, bg_b)
 
         frame += 1
         time.sleep(0.03)

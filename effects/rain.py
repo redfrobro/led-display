@@ -5,6 +5,7 @@ import math
 from random import randrange, random
 
 from .base import effect
+from .utils import hsv_to_rgb
 
 
 @effect('rain', 'Rain Storm',
@@ -41,7 +42,8 @@ def rain(ctx, duration=8, frequency=5, intensity=50, splash_size=3, check_interr
                 dy = int(drop['y'] - i)
                 if 0 <= dy < ctx.rows:
                     intensity_val = int(150 * (1 - i / drop['length']))
-                    ctx.matrix.SetPixel(int(drop['x']), dy, intensity_val // 2, intensity_val // 2, intensity_val)
+                    r, g, b = hsv_to_rgb(240, 0.5, intensity_val / 255)
+                    ctx.matrix.SetPixel(int(drop['x']), dy, r, g, b)
 
             drop['y'] += drop['speed']
 
@@ -73,7 +75,8 @@ def rain(ctx, duration=8, frequency=5, intensity=50, splash_size=3, check_interr
                     py = int(splash['y'] + splash['radius'] * 0.3 * math.sin(rad))
                     if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
                         intensity_val = int(200 * splash['life'])
-                        ctx.matrix.SetPixel(px, py, intensity_val // 2, intensity_val // 2, intensity_val)
+                        r, g, b = hsv_to_rgb(240, 0.5, intensity_val / 255)
+                        ctx.matrix.SetPixel(px, py, r, g, b)
                 new_splashes.append(splash)
 
         splashes = new_splashes
