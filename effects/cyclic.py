@@ -10,8 +10,8 @@ from .utils import hsv_to_rgb
 @effect('cyclic', 'Cyclic CA',
         category='high_power',
         states=(16, "Number of color states (4-32)"),
-        threshold=(3, "Neighbor count needed to advance state (1-4)"))
-def cyclic(ctx, duration=8, states=16, threshold=3, check_interrupt=None, **kwargs):
+        threshold=(1, "Neighbor count needed to advance state (1-4)"))
+def cyclic(ctx, duration=8, states=16, threshold=1, check_interrupt=None, **kwargs):
     """Cyclic CA: cells cycle through N color states. A cell advances if it has
     enough neighbors already in the next state, producing spirals and waves."""
 
