@@ -1117,20 +1117,10 @@ if __name__ == "__main__":
         EFFECT_OPTIONS.update(parse_effect_opts(args.opts))
         logger.debug(f"Custom effect options: {EFFECT_OPTIONS}")
 
-    # Ensure playlists directory exists and migrate built-in playlists
+    # Ensure playlists directory exists and regenerate built-in playlists
     import playlist_manager
-    playlists_dir = os.path.join(os.path.dirname(__file__), 'playlists')
-    if not os.path.exists(playlists_dir):
-        os.makedirs(playlists_dir)
-
-    builtin_playlists = ['low-power', 'high-power', 'night', 'all']
-    missing_playlists = [p for p in builtin_playlists
-                         if not os.path.exists(os.path.join(playlists_dir, f'{p}.json'))]
-
-    if missing_playlists:
-        logger.info(f"Creating missing built-in playlists: {', '.join(missing_playlists)}")
-        playlist_manager.migrate_builtin_playlists()
-        logger.info("Built-in playlists created")
+    playlist_manager.ensure_playlists_dir()
+    playlist_manager.migrate_builtin_playlists()
 
     # Determine which effects to run
     loaded_playlist_data = None

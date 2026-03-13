@@ -315,20 +315,15 @@ def migrate_builtin_playlists():
     except ImportError:
         raise ImportError("Cannot import effect lists from effects module")
 
-    # Define built-in playlists
+    # Define built-in playlists — always regenerated so new effects are picked up
     builtin_configs = [
-        ('low-power', 'Pi Zero optimized effects (12 effects)', LOW_POWER_ORDER),
-        ('high-power', 'Pi 3/4 high-performance effects (10 effects)', HIGH_POWER_ORDER),
-        ('night', 'Dark effects suitable for nighttime (8 effects)', NIGHT_MODE),
-        ('all', 'All available effects (22 effects)', DEFAULT_ORDER),
+        ('low-power', f'Pi Zero optimized effects ({len(LOW_POWER_ORDER)} effects)', LOW_POWER_ORDER),
+        ('high-power', f'Pi 3/4 high-performance effects ({len(HIGH_POWER_ORDER)} effects)', HIGH_POWER_ORDER),
+        ('night', f'Dark effects suitable for nighttime ({len(NIGHT_MODE)} effects)', NIGHT_MODE),
+        ('all', f'All available effects ({len(DEFAULT_ORDER)} effects)', DEFAULT_ORDER),
     ]
 
     for name, description, effect_list in builtin_configs:
-        # Skip if already exists
-        playlist_path = get_playlist_path(name)
-        if os.path.exists(playlist_path):
-            continue
-
         # Create playlist
         playlist = create_playlist(name, description)
 
