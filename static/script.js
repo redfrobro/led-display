@@ -65,12 +65,16 @@ function updateStatus() {
             const mode = data.mode || 'playlist';
             document.getElementById('mode-display').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
 
-            // Update playlist display
+            // Update playlist display (sidebar section and status box)
             const playlistDisplay = document.getElementById('current-playlist-display');
             if (playlistDisplay && data.playlist) {
                 playlistDisplay.textContent = data.playlist;
             } else if (playlistDisplay) {
                 playlistDisplay.textContent = 'None';
+            }
+            const statusPlaylistDisplay = document.getElementById('status-playlist-display');
+            if (statusPlaylistDisplay) {
+                statusPlaylistDisplay.textContent = data.playlist || 'None';
             }
 
             // Update dropdown to match current effect

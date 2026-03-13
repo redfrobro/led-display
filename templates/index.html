@@ -20,20 +20,8 @@
                 <span class="status-value" id="current-effect">-</span>
             </div>
             <div class="status-item">
-                <span class="status-label">State:</span>
-                <span class="status-value" id="state">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Brightness:</span>
-                <span class="status-value" id="brightness-display">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Speed:</span>
-                <span class="status-value" id="speed-display">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Frequency:</span>
-                <span class="status-value" id="frequency-display">-</span>
+                <span class="status-label">Playlist:</span>
+                <span class="status-value" id="status-playlist-display">-</span>
             </div>
             <div class="status-item">
                 <span class="status-label">Mode:</span>
@@ -222,6 +210,26 @@
                 <input type="range" id="frequency" min="1" max="10" value="5"
                        oninput="updateSlider('frequency')"
                        onchange="setFrequency()">
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Details</h2>
+            <div class="status-item">
+                <span class="status-label">State:</span>
+                <span class="status-value" id="state">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Brightness:</span>
+                <span class="status-value" id="brightness-display">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Speed:</span>
+                <span class="status-value" id="speed-display">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Frequency:</span>
+                <span class="status-value" id="frequency-display">-</span>
             </div>
         </div>
 
