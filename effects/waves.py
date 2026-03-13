@@ -4,6 +4,7 @@ import time
 import math
 
 from .base import effect
+from .utils import hsv_to_rgb
 
 
 @effect('waves', 'Ocean Waves',
@@ -35,31 +36,17 @@ def waves(ctx, duration=8, frequency=5, wave_count=3, speed=1.0, check_interrupt
                 # Normalize wave height
                 wave_height = (wave + wave_count) / (wave_count * 2)
 
-                # More vivid ocean colors with better contrast
-                if wave_height < 0.3:
-                    blue = int(80 + 50 * wave_height)
-                    green = int(20 * wave_height)
-                elif wave_height < 0.6:
-                    blue = int(130 + 100 * (wave_height - 0.3))
-                    green = int(20 + 150 * (wave_height - 0.3))
-                else:
-                    blue = 230
-                    green = int(170 + 85 * (wave_height - 0.6))
-
-                # Brighter foam on peaks
-                white = int(max(0, (wave_height - 0.65) * 600))
-
                 # Update foam
                 if wave_height > 0.7 and y < ctx.rows - 1:
                     foam[y][x] = min(255, foam[y][x] + 40)
-
-                # Decay foam
                 foam[y][x] = max(0, foam[y][x] - 8)
 
-                r = min(255, white + foam[y][x])
-                g = min(255, green + int(foam[y][x] * 0.8))
-                b = min(255, blue + int(foam[y][x] * 0.3))
-
+                # Ocean colors: deep blue -> cyan -> white foam at peaks
+                hue = 220 - wave_height * 40
+                foam_f = foam[y][x] / 255.0
+                s = max(0.0, 1.0 - max(0.0, wave_height - 0.65) * 2.5 - foam_f * 0.5)
+                v = min(1.0, 0.3 + wave_height * 0.7 + foam_f * 0.2)
+                r, g, b = hsv_to_rgb(hue, s, v)
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
         t += 0.1

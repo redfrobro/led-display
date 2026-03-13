@@ -107,15 +107,7 @@ class EffectContext:
         return self._cols
 
     def random_hue(self):
-        """Return a random hue consistent with the active mood.
-
-        For mono moods: varies within ±hue_range of the locked hue.
-        For all other moods: full 0-360 range (shift/sat applied at render).
-        """
-        mood = utils._active_mood
-        if mood and 'hue_lock' in mood:
-            r = mood.get('hue_range', 0)
-            return (mood['hue_lock'] + randrange(-r, r + 1)) % 360
+        """Return a random hue (0-359). Mood transforms are applied by hsv_to_rgb at render time."""
         return randrange(360)
 
     def check_interrupt(self):

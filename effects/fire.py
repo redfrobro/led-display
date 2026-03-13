@@ -4,6 +4,7 @@ import time
 from random import randrange
 
 from .base import effect
+from .utils import hsv_to_rgb
 
 
 @effect('fire', 'Fire Effect',
@@ -37,19 +38,16 @@ def fire(ctx, duration=8, frequency=5, intensity=4, cooling=3, check_interrupt=N
             if randrange(10) < intensity:
                 heat[0][x] = min(255, heat[0][x] + randrange(160, 255))
 
-        # Render with more vivid fire colors
+        # Render: black -> red -> orange -> yellow -> white
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 h = heat[ctx.rows - 1 - y][x]
                 if h < 64:
-                    r, g, b = min(255, h * 4), 0, 0
+                    r, g, b = hsv_to_rgb(0, 1.0, h / 64)
                 elif h < 128:
-                    r, g, b = 255, min(255, (h - 64) * 4), 0
-                elif h < 192:
-                    r, g, b = 255, 255, min(255, (h - 128) * 4)
+                    r, g, b = hsv_to_rgb((h - 64) / 64 * 60, 1.0, 1.0)
                 else:
-                    intensity_val = min(255, (h - 192) * 4)
-                    r, g, b = 255, 255, intensity_val
+                    r, g, b = hsv_to_rgb(60, max(0.0, 1.0 - (h - 128) / 128), 1.0)
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
         time.sleep(0.05)
