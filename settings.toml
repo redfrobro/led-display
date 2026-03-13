@@ -39,37 +39,37 @@ font             = "4x6.bdf"      # Font used for startup IP display
 [mood_presets.mono_red]
 hue_lock     = 0
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.mono_orange]
 hue_lock     = 30
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.mono_yellow]
 hue_lock     = 60
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.mono_green]
 hue_lock     = 120
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.mono_cyan]
 hue_lock     = 180
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.mono_blue]
 hue_lock     = 240
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.mono_purple]
 hue_lock     = 280
 sat_override = 1.0
-hue_range    = 15
+hue_range    = 60
 
 [mood_presets.warm]
 hue_shift = -40

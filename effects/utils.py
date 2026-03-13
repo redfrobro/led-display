@@ -52,7 +52,11 @@ def hsv_to_rgb(h, s, v):
     """Convert HSV to RGB. h: 0-360, s: 0-1, v: 0-1. Applies active mood if set."""
     if _active_mood:
         if 'hue_lock' in _active_mood:
-            h = _active_mood['hue_lock']
+            hr = _active_mood.get('hue_range', 0)
+            if hr > 0:
+                h = (_active_mood['hue_lock'] + (h / 180.0 - 1.0) * hr) % 360
+            else:
+                h = _active_mood['hue_lock']
         else:
             h = (h + _active_mood.get('hue_shift', 0)) % 360
         if 'sat_override' in _active_mood:
