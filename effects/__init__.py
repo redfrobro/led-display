@@ -51,6 +51,12 @@ from . import aurora
 from . import spectrum
 from . import swirl
 from . import ripple
+from . import brains
+from . import cyclic
+
+# Low power cellular automaton effects
+from . import ant
+from . import elementary
 
 # Special effects
 from . import text
@@ -77,9 +83,10 @@ def _build_category_list(category):
     # This ensures backward compatibility with the original ordering
     orders = {
         'low_power': ['plasma', 'fire', 'matrix', 'sparkle', 'meteor', 'spiral',
-                      'balls', 'lightning', 'fireworks', 'starfield', 'bubbles', 'comet'],
+                      'balls', 'lightning', 'fireworks', 'starfield', 'bubbles', 'comet',
+                      'ant', 'elementary'],
         'high_power': ['waves', 'rain', 'life', 'tunnel', 'pulse', 'warp',
-                       'aurora', 'spectrum', 'swirl', 'ripple'],
+                       'aurora', 'spectrum', 'swirl', 'ripple', 'brains', 'cyclic'],
         'night': ['matrix', 'sparkle', 'balls', 'lightning', 'fireworks',
                   'starfield', 'aurora', 'ripple'],
     }

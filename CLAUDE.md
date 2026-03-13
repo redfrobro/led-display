@@ -136,10 +136,10 @@ python demos.py -f 10                # Max spawn frequency
 ### Effect Names
 
 **Low Power (Pi Zero compatible):**
-`plasma`, `fire`, `matrix`, `sparkle`, `meteor`, `spiral`, `balls`, `lightning`, `fireworks`, `starfield`, `bubbles`, `comet`
+`plasma`, `fire`, `matrix`, `sparkle`, `meteor`, `spiral`, `balls`, `lightning`, `fireworks`, `starfield`, `bubbles`, `comet`, `ant`, `elementary`
 
 **High Power (Pi 3/4 recommended):**
-`waves`, `rain`, `life`, `tunnel`, `pulse`, `warp`, `aurora`, `spectrum`, `swirl`, `ripple`
+`waves`, `rain`, `life`, `tunnel`, `pulse`, `warp`, `aurora`, `spectrum`, `swirl`, `ripple`, `brains`, `cyclic`
 
 ### Night Mode Effects
 
