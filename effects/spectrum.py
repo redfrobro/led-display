@@ -59,7 +59,7 @@ def spectrum(ctx, duration=8, frequency=5, bars=16, reactive=True, check_interru
             x_start = i * bar_width
             height = int(heights[i])
 
-            for x in range(x_start, min(x_start + bar_width - 1, ctx.cols)):
+            for x in range(x_start, min(x_start + bar_width, ctx.cols)):
                 for y in range(ctx.rows - 1, ctx.rows - 1 - height, -1):
                     if y >= 0:
                         ratio = (ctx.rows - 1 - y) / ctx.rows
@@ -75,7 +75,7 @@ def spectrum(ctx, duration=8, frequency=5, bars=16, reactive=True, check_interru
             # Draw peak indicator
             peak_y = ctx.rows - 1 - int(peaks[i])
             if 0 <= peak_y < ctx.rows:
-                for x in range(x_start, min(x_start + bar_width - 1, ctx.cols)):
+                for x in range(x_start, min(x_start + bar_width, ctx.cols)):
                     ctx.matrix.SetPixel(x, peak_y, 255, 255, 255)
 
         frame += 1

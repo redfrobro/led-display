@@ -823,9 +823,13 @@ class DaemonController:
                 raise
 
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind(self.socket_path)
-        sock.listen(1)
-        sock.settimeout(1.0)
+        try:
+            sock.bind(self.socket_path)
+            sock.listen(1)
+            sock.settimeout(1.0)
+        except Exception:
+            sock.close()
+            raise
 
         logger.info(f"Listening on {self.socket_path}")
 
@@ -911,6 +915,7 @@ class DaemonController:
             log_file = open(log_path, 'a')
             os.dup2(log_file.fileno(), sys.stdout.fileno())
             os.dup2(log_file.fileno(), sys.stderr.fileno())
+            log_file.close()
 
             try:
                 logger.info("Initializing matrix after fork...")

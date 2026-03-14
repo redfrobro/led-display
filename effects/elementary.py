@@ -45,6 +45,7 @@ def elementary(ctx, duration=8, rule=110, check_interrupt=None, **kwargs):
         # Reinitialize if row goes dark (e.g. rule 0 or absorbing rules)
         if not any(current):
             rows.clear()
+            ctx.matrix.Clear()
             current = new_seed()
 
         hue_offset = (hue_offset + 3) % 360

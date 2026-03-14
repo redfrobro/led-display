@@ -28,7 +28,7 @@ def cyclic(ctx, duration=8, states=16, threshold=1, check_interrupt=None, **kwar
         # Draw current state
         for y in range(ctx.rows):
             for x in range(ctx.cols):
-                hue = (grid[y][x] * 360) // states
+                hue = int(grid[y][x] * 360 / states)
                 r, g, b = hsv_to_rgb(hue, 1.0, 1.0)
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
