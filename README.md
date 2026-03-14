@@ -54,11 +54,10 @@ A Python project for controlling a 32x64 RGB LED matrix display using an Adafrui
 
 3. **Install Python dependencies:**
    ```bash
-   pip install Pillow
-
-   # Optional: Install Flask for web server mode
-   pip install flask
+   pip install -r requirements.txt
    ```
+
+   This installs Pillow, Flask (optional web interface), and `tomli` on Python < 3.11 (`tomllib` is built-in from 3.11 onward).
 
 4. **Make scripts executable:**
    ```bash
@@ -379,7 +378,7 @@ sat_override = 1.0
 hue_range    = 20
 ```
 
-Requires Python 3.11+ (uses built-in `tomllib`) or `pip install tomli` for older versions.
+Requires Python 3.11+ (uses built-in `tomllib`) or `tomli` on Python 3.7–3.10 (included in `requirements.txt`).
 
 ## Mood Presets
 

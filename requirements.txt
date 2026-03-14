@@ -1,0 +1,7 @@
+Pillow
+
+# Optional: web server control interface
+flask
+
+# tomllib is built-in for Python 3.11+. Install tomli for Python 3.7-3.10.
+tomli; python_version < "3.11"
