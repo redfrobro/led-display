@@ -11,7 +11,7 @@ effects/
 ├── utils.py           # Shared utilities (hsv_to_rgb, fast_sin, lookup tables)
 ├── EFFECTS.md         # This documentation
 │
-├── # Low Power Effects (Pi Zero compatible - 12 effects)
+├── # Low Power Effects (Pi Zero compatible - 14 effects)
 ├── plasma.py          # Plasma color waves
 ├── fire.py            # Realistic fire simulation
 ├── matrix_rain.py     # Matrix-style digital rain
@@ -24,8 +24,10 @@ effects/
 ├── starfield.py       # Starfield warp
 ├── bubbles.py         # Rising bubbles
 ├── comet.py           # Comet trails
+├── ant.py             # Langton's Ant cellular automaton
+├── elementary.py      # Elementary (1D) cellular automaton
 │
-├── # High Power Effects (Pi 3/4 - 10 effects)
+├── # High Power Effects (Pi 3/4 - 12 effects)
 ├── waves.py           # Ocean waves
 ├── rain.py            # Rain storm
 ├── life.py            # Conway's Game of Life
@@ -36,6 +38,8 @@ effects/
 ├── spectrum.py        # Spectrum analyzer
 ├── swirl.py           # Swirl vortex
 ├── ripple.py          # Water ripples
+├── brains.py          # Brian's Brain 3-state cellular automaton
+├── cyclic.py          # Cyclic CA spirals and waves
 │
 └── # Special Effects
     └── text.py        # Scrolling text display
@@ -209,8 +213,8 @@ Effects can belong to multiple categories:
 
 | Category | Description | Example Effects |
 |----------|-------------|-----------------|
-| `low_power` | Optimized for Pi Zero | plasma, fire, matrix |
-| `high_power` | Requires Pi 3/4 | waves, life, aurora |
+| `low_power` | Optimized for Pi Zero | plasma, fire, matrix, ant, elementary |
+| `high_power` | Requires Pi 3/4 | waves, life, aurora, brains, cyclic |
 | `night` | Dark, subtle effects | matrix, lightning, stars |
 | `special` | Unique requirements | text |
 

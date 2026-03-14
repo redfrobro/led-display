@@ -1,6 +1,6 @@
 # LED Matrix Display
 
-A Python project for controlling a 32x64 RGB LED matrix display using an Adafruit HAT on Raspberry Pi. Features 22 colorful animated effects with both interactive and daemon modes, optimized for both Pi Zero (low power) and Pi 3/4 (high power).
+A Python project for controlling a 32x64 RGB LED matrix display using an Adafruit HAT on Raspberry Pi. Features 26 colorful animated effects with both interactive and daemon modes, optimized for both Pi Zero (low power) and Pi 3/4 (high power).
 
 ## Table of Contents
 
@@ -68,7 +68,7 @@ A Python project for controlling a 32x64 RGB LED matrix display using an Adafrui
 ## Quick Start
 
 ```bash
-# Run all 22 effects in a loop (Pi 3/4)
+# Run all 26 effects in a loop (Pi 3/4)
 sudo python demos.py
 
 # Run only low-power effects (Pi Zero compatible)
@@ -100,7 +100,7 @@ bin/led-webserver
 Run effects directly in the terminal. Press `Ctrl+C` to exit.
 
 ```bash
-# Run all 22 effects (8 seconds each, infinite loop)
+# Run all 26 effects (8 seconds each, infinite loop)
 sudo python demos.py
 
 # Run specific effects
@@ -128,15 +128,15 @@ sudo python demos.py -f 10
 The effects are optimized for different Raspberry Pi models:
 
 ```bash
-# Low power mode - 12 effects optimized for Pi Zero
+# Low power mode - 14 effects optimized for Pi Zero
 # Uses lookup tables and simplified calculations
 sudo python demos.py --low-power
 
-# High power mode - 10 effects that utilize more CPU
+# High power mode - 12 effects that utilize more CPU
 # Features complex simulations like Game of Life, water physics, etc.
 sudo python demos.py --high-power
 
-# Default - All 22 effects (recommended for Pi 3/4)
+# Default - All 26 effects (recommended for Pi 3/4)
 sudo python demos.py
 ```
 
@@ -259,7 +259,7 @@ The web interface is designed with a dark theme optimized for controlling LED di
 
 ### Low Power Effects (Pi Zero Compatible)
 
-These 12 effects are optimized for Pi Zero with lookup tables and efficient algorithms:
+These 14 effects are optimized for Pi Zero with lookup tables and efficient algorithms:
 
 | Effect | Description | Best Settings |
 |--------|-------------|---------------|
@@ -275,10 +275,12 @@ These 12 effects are optimized for Pi Zero with lookup tables and efficient algo
 | `starfield` | 3D starfield flying through space | `count=150, speed=0.03` |
 | `bubbles` | Colorful bubbles rising up | `size=3, wobble=3` |
 | `comet` | Orbiting comet with colorful trail | `trail=30, speed=0.2` |
+| `ant` | Langton's Ant emergent trail patterns | `num_ants=4` |
+| `elementary` | Elementary CA scrolling patterns | `rule=110` |
 
 ### High Power Effects (Pi 3/4 Recommended)
 
-These 10 effects use more complex algorithms and are designed for Pi 3/4:
+These 12 effects use more complex algorithms and are designed for Pi 3/4:
 
 | Effect | Description | Best Settings |
 |--------|-------------|---------------|
@@ -292,6 +294,8 @@ These 10 effects use more complex algorithms and are designed for Pi 3/4:
 | `spectrum` | Audio visualizer style bars | `bars=16, reactive=true` |
 | `swirl` | Multiple rotating vortices | `vortices=3, speed=1.2` |
 | `ripple` | Water ripple pond effect | `auto_drops=true, drop_rate=20` |
+| `brains` | Brian's Brain 3-state cellular automaton | `density=20` |
+| `cyclic` | Cyclic CA spirals and waves | `states=16, threshold=1` |
 
 **Night mode effects** (darker, less intense):
 `matrix`, `sparkle`, `balls`, `lightning`, `fireworks`, `starfield`, `aurora`, `ripple`
@@ -305,9 +309,10 @@ Options:
   -l, --list              List all available effects and exit
   --list-opts             List all effect-specific options and exit
   -n, --night             Night mode: darker effects only
-  -p, --low-power         Low power mode: Pi Zero optimized effects (12 effects)
-  --high-power            High power mode: Pi 3/4 effects only (10 effects)
+  -p, --low-power         Low power mode: Pi Zero optimized effects (14 effects)
+  --high-power            High power mode: Pi 3/4 effects only (12 effects)
   -e, --effects EFFECTS   Comma-separated effects (e.g., fireworks,matrix)
+  --playlist NAME         Load a custom playlist by name
   -d, --duration SECS     Duration per effect (0 = forever, default: 8)
   -s, --shuffle           Randomize effect order
   -f, --frequency 1-10    Spawn rate for particle effects (default: 5)
@@ -339,7 +344,84 @@ Options:
 | `frequency <1-10>` | Adjust spawn frequency |
 | `brightness <0-100>` | Adjust brightness level |
 | `speed <0.1-5.0>` | Adjust animation speed multiplier |
+| `duration <seconds>` | Set effect duration (0 = forever) |
+| `playlist` | Switch back to playlist mode |
+| `mood <preset>` | Apply a color mood preset (see Mood Presets) |
 | `opt <key>=<value>` | Set effect-specific option |
+
+## Configuration (settings.toml)
+
+`settings.toml` in the project root provides persistent defaults. Command-line arguments always override these values.
+
+```toml
+[display]
+rows             = 32             # Display height in pixels
+cols             = 64             # Display width in pixels
+hardware_mapping = "adafruit-hat" # HAT type
+parallel         = 1              # Number of parallel chains
+
+[daemon]
+duration   = 8      # Seconds per effect (0 = forever)
+frequency  = 5      # Spawn rate for particle effects (1-10)
+pause      = 0.5    # Seconds between effects
+brightness = 100    # Initial brightness (0-100)
+speed      = 1.0    # Initial animation speed (0.1-5.0)
+port       = 80     # Web server port (80 requires sudo)
+socket     = "/tmp/led-matrix.sock"
+
+[startup]
+display_duration = 15      # Seconds to show IP address on boot
+font             = "4x6.bdf"
+
+[mood_presets.my_custom_mood]
+hue_lock     = 120   # Lock hue to green
+sat_override = 1.0
+hue_range    = 20
+```
+
+Requires Python 3.11+ (uses built-in `tomllib`) or `pip install tomli` for older versions.
+
+## Mood Presets
+
+Moods apply a global color transform to all effects without changing the underlying animations. They can be selected via the web interface, daemon control command, or defined in `settings.toml`.
+
+**Built-in presets:**
+
+| Preset | Description |
+|--------|-------------|
+| `default` | Natural effect colors (no transform) |
+| `mono_red` | Lock hues to red |
+| `mono_orange` | Lock hues to orange |
+| `mono_yellow` | Lock hues to yellow |
+| `mono_green` | Lock hues to green |
+| `mono_cyan` | Lock hues to cyan |
+| `mono_blue` | Lock hues to blue |
+| `mono_purple` | Lock hues to purple |
+| `warm` | Shift hues warmer (-40°) |
+| `cool` | Shift hues cooler (+60°) |
+| `pastel` | Reduce saturation (soft colors) |
+| `night` | Dimmer and less saturated |
+| `grayscale` | Remove all color |
+
+**Using moods:**
+```bash
+# Via daemon control
+bin/led-control mood warm
+bin/led-control mood mono_blue
+bin/led-control mood default     # Reset to default
+
+# Moods are also selectable from the web interface
+```
+
+**Mood preset keys (for settings.toml custom presets):**
+- `hue_lock` (0-360) — Lock all hues to a single value
+- `hue_range` (0-180) — ±degrees of variation around `hue_lock`
+- `hue_shift` (-360–360) — Rotate all hues by this many degrees
+- `sat_override` (0.0-1.0) — Force saturation to this value
+- `sat_mult` (0.0-1.0) — Multiply saturation by this factor
+- `val_mult` (0.0-1.0) — Multiply brightness by this factor
+
+Playlists can also include a `"mood"` key to automatically apply a preset when loaded.
 
 ## Effect Customization
 
@@ -419,6 +501,12 @@ bin/led-control opt gravity=0.2
 - `trail` (default: 25) - Trail length
 - `speed` (default: 0.15) - Orbit speed
 
+**ant:**
+- `num_ants` (default: 4) - Number of ants (1-8)
+
+**elementary:**
+- `rule` (default: 110) - Wolfram rule number (0-255). 30=chaotic, 90=Sierpinski, 110=complex
+
 #### High Power Effects
 
 **waves:**
@@ -460,6 +548,13 @@ bin/led-control opt gravity=0.2
 **ripple:**
 - `auto_drops` (default: true) - Automatic water drops
 - `drop_rate` (default: 30) - Drop frequency
+
+**brains:**
+- `density` (default: 20) - Initial alive cell density %
+
+**cyclic:**
+- `states` (default: 16) - Number of color states (4-32)
+- `threshold` (default: 1) - Neighbor count needed to advance state (1-4)
 
 ## Troubleshooting
 
@@ -535,14 +630,32 @@ sudo rm -f /tmp/led-matrix.pid /tmp/led-matrix.log /tmp/led-matrix.sock
 
 ```
 led-display/
-├── demos.py           # Main demo script with 22 effects and daemon mode
-├── blink.py           # Original simple animations
-├── led_control.py     # Control client module
+├── demos.py               # Main script: 26 effects, daemon mode, web server
+├── blink.py               # Original simple animations
+├── led_control.py         # IPC control client module
+├── webserver.py           # Flask web server for browser control
+├── playlist_manager.py    # Playlist load/save/list logic
+├── led_playlist.py        # Playlist CLI tool
+├── config.py              # Shared configuration constants
+├── effects/               # Modular effect system (see effects/EFFECTS.md)
+│   ├── __init__.py        # Auto-discovery, DEMOS dict, category lists
+│   ├── base.py            # EffectContext, @effect decorator, registry
+│   ├── utils.py           # Shared utilities (hsv_to_rgb, fast_sin, tables)
+│   └── *.py               # Individual effect implementations
+├── playlists/             # JSON playlist files
+│   ├── low-power.json
+│   ├── high-power.json
+│   ├── night.json
+│   └── all.json
 ├── bin/
-│   ├── led-daemon     # Convenience script to start daemon
-│   └── led-control    # CLI client for daemon control
-├── CLAUDE.md          # Development instructions
-└── README.md          # This file
+│   ├── led-daemon         # Convenience script to start daemon
+│   ├── led-control        # CLI client for daemon control
+│   ├── led-webserver      # Start daemon with web server enabled
+│   ├── led-playlist       # Playlist management CLI
+│   └── led-demos          # Run demos directly
+├── fonts/                 # BDF bitmap fonts for text effect
+├── CLAUDE.md              # Development instructions
+└── README.md              # This file
 ```
 
 ## License
