@@ -1018,8 +1018,8 @@ Effect-specific options (use --list-opts to see all):
                         help="Comma-separated list of effects to run (e.g., fireworks,matrix,starfield)")
     parser.add_argument("--playlist", type=str, default=None,
                         help="Load custom playlist (e.g., 'my-custom')")
-    parser.add_argument("-d", "--duration", type=float, default=_cfg.settings['daemon']['duration'],
-                        help="Duration of each effect in seconds (0 = run forever, default: 8)")
+    parser.add_argument("-d", "--duration", type=float, default=None,
+                        help="Duration of each effect in seconds (0 = run forever, default: 8, default: forever for single effect)")
     parser.add_argument("-s", "--shuffle", action="store_true",
                         help="Randomize the order of effects")
     parser.add_argument("--loops", type=int, default=0,
@@ -1197,6 +1197,10 @@ if __name__ == "__main__":
     if args.shuffle:
         shuffle(effect_keys)
         logger.debug("Effect order shuffled")
+
+    # Default duration: forever for a single effect, config default otherwise
+    if args.duration is None:
+        args.duration = 0 if len(effect_keys) == 1 else _cfg.settings['daemon']['duration']
 
     logger.info(f"Running effects: {effect_keys}")
     logger.info(f"Duration: {args.duration}s, Frequency: {args.frequency}, Pause: {args.pause}s")
