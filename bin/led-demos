@@ -12,7 +12,7 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR" || exit
 
 # Determine the actual user's home directory (not root's when using sudo)
 USER_HOME="$HOME"

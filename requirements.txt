@@ -1,3 +1,4 @@
+werkzeug
 Pillow
 
 # Optional: web server control interface

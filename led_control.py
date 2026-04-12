@@ -16,7 +16,7 @@ LOG_FILE = "/tmp/led-matrix.log"
 
 
 def is_daemon_running():
-    """Check if daemon is running by checking PID file and process"""
+    """Check if the daemon is running by checking the PID file and process"""
     if not os.path.exists(PID_FILE):
         return False
 
@@ -24,13 +24,13 @@ def is_daemon_running():
         with open(PID_FILE, 'r') as f:
             pid = int(f.read().strip())
 
-        # Check if process is running
+        # Check if a process is running
         try:
-            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks if process exists
+            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks if a process exists
             return True
         except PermissionError:
-            # Process exists but we don't have permission to signal it (daemon running as root)
-            # Fall back to checking if socket exists and is connectable
+            # Process exists, but we don't have permission to signal it (daemon running as root)
+            # Fall back to checking if the socket exists and is connectable
             return os.path.exists(SOCKET_PATH)
         except ProcessLookupError:
             # Process doesn't exist
@@ -40,7 +40,7 @@ def is_daemon_running():
 
 
 def send_command(cmd):
-    """Send command to daemon and return response"""
+    """Send command to daemon and return a response"""
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
@@ -60,7 +60,7 @@ def send_command(cmd):
                     if len(response_data) > max_response_size:
                         raise ValueError("Response too large")
                     if b'\n' in response_data:
-                        # Extract up to newline
+                        # Extract up to a newline
                         response_data = response_data.split(b'\n')[0]
                         break
                 except socket.timeout:
@@ -134,7 +134,7 @@ def kill_daemon():
 
 
 def check_daemon():
-    """Check if daemon is running"""
+    """Check if the daemon is running"""
     if is_daemon_running():
         print("Daemon is running")
         return True
@@ -144,7 +144,7 @@ def check_daemon():
 
 
 def show_logs(lines=20):
-    """Show last N lines of daemon log"""
+    """Show the last N lines of the daemon log"""
     if not os.path.exists(LOG_FILE):
         print(f"Log file not found: {LOG_FILE}")
         return False
@@ -246,13 +246,13 @@ def main(args=None):
     # Build command from arguments
     cmd = " ".join(args)
 
-    # Check if daemon is running before sending command
+    # Check if the daemon is running before sending a command
     if not is_daemon_running():
         print("Error: Daemon is not running")
         print("Start it with: bin/led-daemon")
         return 1
 
-    # Send command and display response
+    # Send command and display a response
     response = send_command(cmd)
     format_response(response)
 

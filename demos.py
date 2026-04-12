@@ -12,7 +12,6 @@ Effects are implemented in the effects/ module.
 """
 
 import time
-import math
 import sys
 import os
 import argparse
@@ -20,7 +19,7 @@ import logging
 import socket
 import threading
 import json
-from random import randrange, random, choice, shuffle
+from random import  shuffle
 
 # Setup logging (disabled by default)
 logger = logging.getLogger('led-demos')
