@@ -93,6 +93,7 @@ def format_response(response):
     if "effect" in response and "uptime" in response:
         print(f"Current Effect: {response['effect_name']} ({response['effect']})")
         print(f"Progress: {response['index'] + 1}/{response['total']}")
+        print(f"Display: {'ON' if response.get('effects_running', True) else 'OFF'}")
         print(f"Status: {'PAUSED' if response['paused'] else 'RUNNING'}")
         print(f"Uptime: {response['uptime']}s")
         print(f"Frequency: {response['frequency']}")
@@ -170,6 +171,8 @@ def print_usage():
     print("  status              Get current effect and daemon status")
     print("  next                Skip to next effect")
     print("  prev                Go to previous effect")
+    print("  on                  Turn display on (start effects)")
+    print("  off                 Turn display off (daemon keeps running)")
     print("  pause               Pause current effect")
     print("  resume              Resume paused effect")
     print("  set <effect>        Switch to specific effect (single mode)")

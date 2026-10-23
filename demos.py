@@ -346,7 +346,8 @@ class DaemonController:
         self.args = args
         self.effect_keys = effect_keys
         self.running = True
-        self.effects_running = True
+        # In standby the daemon boots with the display off until 'on'/'start'
+        self.effects_running = not args.standby
         self.paused = False
         self.mood = 'default'
         self.current_effect = None
@@ -410,13 +411,14 @@ class DaemonController:
         factor = self.brightness / 100.0
         return int(r * factor), int(g * factor), int(b * factor)
 
-    def effect_worker(self):
+    def effect_worker(self, show_startup_info=True):
         """Run effects in a loop"""
         logger.info("Effect worker thread started")
 
         # Display network info on startup
-        ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=self.should_interrupt)
-        display_startup_info(ctx)
+        if show_startup_info:
+            ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=self.should_interrupt)
+            display_startup_info(ctx)
 
         loop_count = 0
 
@@ -570,16 +572,19 @@ class DaemonController:
                 self.skip_to_next = True
                 return {"status": "ok", "message": "Playlist mode enabled"}
 
-            elif command == "stop":
+            elif command in ("stop", "off"):
                 self.effects_running = False
                 self.cond.notify_all()
                 return {"status": "ok", "message": "Stopping effects"}
 
-            elif command == "start":
+            elif command in ("start", "on"):
                 if not self.effects_running:
+                    if self.effect_thread and self.effect_thread.is_alive():
+                        return {"status": "error", "message": "Effects are still stopping, try again"}
                     self.effects_running = True
                     self.cond.notify_all()
-                    self.effect_thread = threading.Thread(target=self.effect_worker, daemon=False)
+                    self.effect_thread = threading.Thread(
+                        target=self.effect_worker, kwargs={'show_startup_info': False}, daemon=False)
                     self.effect_thread.start()
                     return {"status": "ok", "message": "Effects started"}
                 else:
@@ -928,11 +933,14 @@ class DaemonController:
                 f.write(str(os.getpid()))
             logger.info(f"PID file written: {pid_file}")
 
-        self.effect_thread = threading.Thread(target=self.effect_worker, daemon=False)
         self.ipc_thread = threading.Thread(target=self.ipc_worker, daemon=False)
-
-        self.effect_thread.start()
         self.ipc_thread.start()
+
+        if self.effects_running:
+            self.effect_thread = threading.Thread(target=self.effect_worker, daemon=False)
+            self.effect_thread.start()
+        else:
+            logger.info("Standby mode: display off until 'on' command")
 
         if self.webserver_enabled:
             self.webserver_thread = threading.Thread(target=self.webserver_worker, daemon=False)
@@ -1031,6 +1039,8 @@ Effect-specific options (use --list-opts to see all):
                         help="Enable verbose logging for troubleshooting")
     parser.add_argument("--daemon", action="store_true",
                         help="Run as a daemon with IPC control socket")
+    parser.add_argument("--standby", action="store_true",
+                        help="Daemon starts with the display off; turn on with 'led-control on' or the web UI")
     parser.add_argument("--socket", type=str, default=_cfg.settings['daemon']['socket'],
                         help="Unix socket path for daemon mode (default: /tmp/led-matrix.sock)")
     parser.add_argument("--webserver", action="store_true",

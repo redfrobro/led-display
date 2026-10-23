@@ -46,6 +46,8 @@ bin/led-control logs 50             # Show last 50 lines of daemon log
 bin/led-control status              # Show current effect and stats
 bin/led-control next                # Skip to next effect
 bin/led-control prev                # Go to previous effect
+bin/led-control on                  # Turn display on (start effects)
+bin/led-control off                 # Turn display off (daemon + web server keep running)
 bin/led-control pause               # Pause display
 bin/led-control resume              # Resume display
 bin/led-control set fireworks       # Switch to specific effect
@@ -62,6 +64,17 @@ bin/led-control kill                # Force-stop daemon (SIGTERM)
 ```
 
 The daemon mode supports all regular command-line options (`--effects`, `--night`, `--duration`, `--low-power`, etc.) and can be controlled in real-time via the `led-control` client.
+
+### Run on Boot (Standby)
+
+`--standby` starts the daemon with the display off; it stays off until `led-control on`, the web UI's Start button, or an `on` command over the socket.
+
+```bash
+bin/led-install-service                     # systemd service: --daemon --webserver --standby
+bin/led-install-service --webserver         # Custom args (display on at boot)
+bin/led-install-service --uninstall
+sudo systemctl start|stop|status led-matrix
+```
 
 ### Web Server Mode
 
@@ -114,6 +127,7 @@ The web interface provides:
 --pause SECS            Pause between effects (default: 0.5)
 -v, --verbose           Enable verbose logging for troubleshooting
 --daemon                Run as daemon with IPC control socket
+--standby               Daemon starts with display off (turn on via 'on' command)
 --socket PATH           Unix socket path (default: /tmp/led-matrix.sock)
 --webserver             Run web server for browser-based control (requires Flask)
 --port PORT             Port for web server (default: 80, requires sudo)

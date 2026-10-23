@@ -1,0 +1,50 @@
+#!/bin/bash
+# Install a systemd service that starts the LED daemon (with web server) on boot.
+# By default the display starts off (--standby); turn it on with
+# `bin/led-control on` or the "Start" button in the web interface.
+#
+# Usage: bin/led-install-service [daemon args...]
+#   Default daemon args: --webserver --standby
+#   bin/led-install-service --uninstall    Remove the service
+
+set -e
+
+SERVICE_NAME="led-matrix"
+UNIT_PATH="/etc/systemd/system/$SERVICE_NAME.service"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUN_USER="${SUDO_USER:-$USER}"
+
+if [ "$1" = "--uninstall" ]; then
+    sudo systemctl disable --now "$SERVICE_NAME" 2>/dev/null || true
+    sudo rm -f "$UNIT_PATH"
+    sudo systemctl daemon-reload
+    echo "Removed $SERVICE_NAME service"
+    exit 0
+fi
+
+DAEMON_ARGS="${*:---webserver --standby}"
+
+sudo tee "$UNIT_PATH" > /dev/null <<EOF
+[Unit]
+Description=LED Matrix daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+PIDFile=/tmp/led-matrix.pid
+# USER lets bin/led-demos find the venv in the installing user's home
+Environment=USER=$RUN_USER
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=$SCRIPT_DIR/bin/led-demos --daemon $DAEMON_ARGS
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable "$SERVICE_NAME"
+echo "Installed $UNIT_PATH (ExecStart: bin/led-demos --daemon $DAEMON_ARGS)"
+echo "Start now with: sudo systemctl start $SERVICE_NAME"
