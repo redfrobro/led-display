@@ -1291,8 +1291,8 @@ if __name__ == "__main__":
                     name, func, _ = DEMOS[key]
                     effect_duration = effect_durations.get(key, args.duration)
                     effect_param = effect_params.get(key, {})
-                    effect_frequency = effect_param.get('frequency', args.frequency)
-                    effect_speed = effect_param.get('speed', 1.0)
+                    effect_frequency = effect_param.get('frequency') if effect_param.get('frequency') is not None else args.frequency
+                    effect_speed = effect_param.get('speed') if effect_param.get('speed') is not None else 1.0
                     playlist_opts = effect_param.get('options', {})
 
                     opts = get_effect_options(key)
