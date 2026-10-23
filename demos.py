@@ -1047,7 +1047,10 @@ Effect-specific options (use --list-opts to see all):
                         help="Run web server for browser-based control (requires Flask)")
     parser.add_argument("--port", type=int, default=_cfg.settings['daemon']['port'],
                         help="Port for web server (default: 80, requires sudo)")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.standby and not args.daemon:
+        parser.error("--standby requires --daemon")
+    return args
 
 
 def setup_logging(verbose):
