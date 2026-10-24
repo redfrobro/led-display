@@ -258,6 +258,8 @@ def get_playlist(name):
         return jsonify(playlist)
     except FileNotFoundError:
         return jsonify({'error': f"Playlist '{name}' not found"}), 404
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -284,6 +286,8 @@ def create_playlist():
         playlist = playlist_manager.create_playlist(name, description)
         playlist_manager.save_playlist(name, playlist)
         return jsonify({'success': True, 'playlist': playlist})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -301,6 +305,8 @@ def update_playlist(name):
 
         playlist_manager.save_playlist(name, data)
         return jsonify({'success': True})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -318,6 +324,8 @@ def delete_playlist(name):
         if success:
             return jsonify({'success': True})
         return jsonify({'error': 'Playlist not found'}), 404
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -325,6 +333,9 @@ def delete_playlist(name):
 @app.route('/api/playlist/<name>/load', methods=['POST'])
 def load_playlist(name):
     """Load playlist in daemon"""
+    import playlist_manager
+    if not playlist_manager.is_valid_playlist_name(name):
+        return jsonify({'error': f"Invalid playlist name '{name}'"}), 400
     if not is_daemon_running():
         return jsonify({'error': 'Daemon is not running'}), 503
 

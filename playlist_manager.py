@@ -5,9 +5,11 @@ of LED effects with per-effect parameters.
 """
 
 import os
+import re
 import json
 import fcntl
 import time
+import logging
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 
@@ -15,6 +17,9 @@ from typing import Dict, List, Tuple, Optional, Any
 # Path configuration
 PLAYLISTS_DIR = os.path.join(os.path.dirname(__file__), 'playlists')
 BUILTIN_PLAYLISTS = {'low-power', 'high-power', 'night', 'all'}
+PLAYLIST_NAME_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}')
+
+logger = logging.getLogger('led-demos')
 
 
 def ensure_playlists_dir():
@@ -23,8 +28,21 @@ def ensure_playlists_dir():
         os.makedirs(PLAYLISTS_DIR)
 
 
+def is_valid_playlist_name(name: str) -> bool:
+    """Check a playlist name is safe to use as a filename (no paths, dots, or spaces)"""
+    return isinstance(name, str) and PLAYLIST_NAME_RE.fullmatch(name) is not None
+
+
 def get_playlist_path(name: str) -> str:
-    """Get full path to playlist file"""
+    """Get full path to playlist file
+
+    Raises:
+        ValueError: If the name could escape the playlists directory
+    """
+    # Names come from the web API and socket; the daemon runs as root
+    if not is_valid_playlist_name(name):
+        raise ValueError(f"Invalid playlist name '{name}': use 1-64 letters, digits, '-' or '_', "
+                         "starting with a letter or digit")
     return os.path.join(PLAYLISTS_DIR, f"{name}.json")
 
 
@@ -124,6 +142,9 @@ def list_playlists() -> List[dict]:
             continue
 
         name = filename[:-5]  # Remove .json extension
+        if not is_valid_playlist_name(name):
+            logger.warning(f"Skipping playlist file with invalid name: {filename} (rename it to use only letters, digits, '-' or '_')")
+            continue
 
         try:
             data = load_playlist(name)

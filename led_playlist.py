@@ -135,7 +135,11 @@ def cmd_delete(args):
             print("\nCancelled")
             return 0
 
-    success = playlist_manager.delete_playlist(args.name)
+    try:
+        success = playlist_manager.delete_playlist(args.name)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     if success:
         print(f"Deleted playlist '{args.name}'")

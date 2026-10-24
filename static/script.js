@@ -992,8 +992,13 @@ function closePlaylistEditor() {
 }
 
 async function showCreatePlaylist() {
-    const name = prompt('Enter playlist name:');
+    const name = prompt('Enter playlist name (letters, digits, - or _):');
     if (!name) return;
+    // Mirrors the server check in playlist_manager.get_playlist_path
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) {
+        showMessage('Playlist names can only use letters, digits, - or _ (max 64)', 'error');
+        return;
+    }
     const description = prompt('Enter description (optional):') || '';
 
     try {
