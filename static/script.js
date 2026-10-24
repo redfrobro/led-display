@@ -360,19 +360,19 @@ function loadEffectOptions(effectKey) {
                 if (option.type === 'boolean') {
                     optDiv.innerHTML = `
                         <div class="slider-label">
-                            <span>${option.description}</span>
-                            <span id="${option.key}-value">${option.default ? 'On' : 'Off'}</span>
+                            <span>${escapeHtml(option.description)}</span>
+                            <span id="${escapeHtml(option.key)}-value">${option.default ? 'On' : 'Off'}</span>
                         </div>
-                        <button id="${option.key}-toggle" onclick="toggleEffectOption('${option.key}')"
+                        <button id="${escapeHtml(option.key)}-toggle" onclick="toggleEffectOption('${option.key}')"
                                 style="width: 100%;">${option.default ? 'On' : 'Off'}</button>
                     `;
                 } else if (option.type === 'enum') {
                     // Dropdown for enum types (e.g., font selection)
                     optDiv.innerHTML = `
                         <div class="slider-label">
-                            <span>${option.description}</span>
+                            <span>${escapeHtml(option.description)}</span>
                         </div>
-                        <select id="${option.key}" class="effect-selector" onchange="setEnumEffectOption('${option.key}')">
+                        <select id="${escapeHtml(option.key)}" class="effect-selector" onchange="setEnumEffectOption('${option.key}')">
                             <option value="">Loading...</option>
                         </select>
                     `;
@@ -454,21 +454,21 @@ function loadEffectOptions(effectKey) {
 
                     optDiv.innerHTML = `
                         <div class="slider-label">
-                            <span>${option.description}</span>
-                            <span id="${option.key}-value">${option.default}</span>
+                            <span>${escapeHtml(option.description)}</span>
+                            <span id="${escapeHtml(option.key)}-value">${escapeHtml(option.default)}</span>
                         </div>
-                        <input type="range" id="${option.key}"
-                               min="${min}" max="${max}" step="${step}" value="${option.default}"
+                        <input type="range" id="${escapeHtml(option.key)}"
+                               min="${min}" max="${max}" step="${step}" value="${escapeHtml(option.default)}"
                                oninput="updateEffectOption('${option.key}')"
                                onchange="setEffectOption('${option.key}')">
                     `;
                 } else if (option.type === 'text') {
                     optDiv.innerHTML = `
                         <div class="slider-label">
-                            <span>${option.description}</span>
+                            <span>${escapeHtml(option.description)}</span>
                         </div>
                         <div style="display: flex; gap: 10px;">
-                            <input type="text" id="${option.key}" value="${option.default}"
+                            <input type="text" id="${escapeHtml(option.key)}" value="${escapeHtml(option.default)}"
                                    style="flex: 1; padding: 10px; border-radius: 5px; border: 2px solid #00ff88; background: #1a1a1a; color: #e0e0e0; font-size: 14px;"
                                    placeholder="Enter text to display"
                                    onkeypress="if(event.key==='Enter') setTextEffectOption('${option.key}')">
@@ -533,6 +533,16 @@ function toggleEffectOption(key) {
     button.textContent = newValue ? 'On' : 'Off';
     valueSpan.textContent = newValue ? 'On' : 'Off';
     sendCommand('opt', key + '=' + newValue);
+}
+
+// Escape a value for use in HTML text or a quoted attribute (template-literal innerHTML)
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function showMessage(text, type) {
@@ -644,11 +654,11 @@ function renderPlaylistEffects() {
         div.innerHTML = `
             <div style="flex: 1;">
                 <div class="effect-item-header">
-                    <span class="effect-name">${effect.key}</span>
+                    <span class="effect-name">${escapeHtml(effect.key)}</span>
                     <span class="drag-handle">⋮⋮</span>
                 </div>
                 <div class="effect-params">
-                    ${params.map(p => `<span class="effect-param has-value">${p}</span>`).join('')}
+                    ${params.map(p => `<span class="effect-param has-value">${escapeHtml(p)}</span>`).join('')}
                 </div>
             </div>
             <div class="effect-item-controls">
@@ -816,8 +826,8 @@ async function loadEffectOptionsForEditor(effectKey, currentOptions = {}) {
 
             if (option.type === 'boolean') {
                 optionDiv.innerHTML = `
-                    <label>${option.description}</label>
-                    <select id="option-${option.key}" class="effect-selector">
+                    <label>${escapeHtml(option.description)}</label>
+                    <select id="option-${escapeHtml(option.key)}" class="effect-selector">
                         <option value="true" ${currentValue === true ? 'selected' : ''}>On</option>
                         <option value="false" ${currentValue === false ? 'selected' : ''}>Off</option>
                     </select>
@@ -833,27 +843,27 @@ async function loadEffectOptionsForEditor(effectKey, currentOptions = {}) {
                 else if (option.key === 'gravity') { min = 1; max = 50; step = 1; } // 0.01-0.5
 
                 optionDiv.innerHTML = `
-                    <label>${option.description}</label>
-                    <input type="range" id="option-${option.key}"
-                           min="${min}" max="${max}" step="${step}" value="${currentValue}"
+                    <label>${escapeHtml(option.description)}</label>
+                    <input type="range" id="option-${escapeHtml(option.key)}"
+                           min="${min}" max="${max}" step="${step}" value="${escapeHtml(currentValue)}"
                            oninput="document.getElementById('option-${option.key}-value').textContent = this.value">
-                    <div class="slider-value">Value: <span id="option-${option.key}-value">${currentValue}</span></div>
-                    <small>Default: ${option.default}</small>
+                    <div class="slider-value">Value: <span id="option-${escapeHtml(option.key)}-value">${escapeHtml(currentValue)}</span></div>
+                    <small>Default: ${escapeHtml(option.default)}</small>
                 `;
             } else if (option.type === 'text') {
                 optionDiv.innerHTML = `
-                    <label>${option.description}</label>
-                    <input type="text" id="option-${option.key}" value="${currentValue}" class="form-input">
-                    <small>Default: ${option.default}</small>
+                    <label>${escapeHtml(option.description)}</label>
+                    <input type="text" id="option-${escapeHtml(option.key)}" value="${escapeHtml(currentValue)}" class="form-input">
+                    <small>Default: ${escapeHtml(option.default)}</small>
                 `;
             } else if (option.type === 'enum' && option.key === 'font_name') {
                 // Special handling for font selection
                 optionDiv.innerHTML = `
-                    <label>${option.description}</label>
-                    <select id="option-${option.key}" class="effect-selector">
+                    <label>${escapeHtml(option.description)}</label>
+                    <select id="option-${escapeHtml(option.key)}" class="effect-selector">
                         <option value="">Loading fonts...</option>
                     </select>
-                    <small>Default: ${option.default}</small>
+                    <small>Default: ${escapeHtml(option.default)}</small>
                 `;
                 // Load fonts
                 fetch('/api/fonts')
@@ -872,9 +882,9 @@ async function loadEffectOptionsForEditor(effectKey, currentOptions = {}) {
             } else {
                 // Generic dropdown for enum
                 optionDiv.innerHTML = `
-                    <label>${option.description}</label>
-                    <input type="text" id="option-${option.key}" value="${currentValue}" class="form-input">
-                    <small>Default: ${option.default}</small>
+                    <label>${escapeHtml(option.description)}</label>
+                    <input type="text" id="option-${escapeHtml(option.key)}" value="${escapeHtml(currentValue)}" class="form-input">
+                    <small>Default: ${escapeHtml(option.default)}</small>
                 `;
             }
 

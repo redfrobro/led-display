@@ -30,7 +30,8 @@ Web server runs as root on `0.0.0.0:80` with no auth.
 
 - [x] **#10 Path traversal in playlist names.** `POST /api/playlist` takes `name` from the JSON body; `get_playlist_path` (`playlist_manager.py:28`) joins it unchecked, so `../../etc/foo` writes `/etc/foo.json` as root. Socket `load_playlist` has the same read-side issue. Validate names against `^[A-Za-z0-9_-]+$`.
   - Fixed: `get_playlist_path` only accepts `[A-Za-z0-9][A-Za-z0-9_-]{0,63}` and raises `ValueError` otherwise, covering the web API, socket `load_playlist`/`save_playlist`, `--playlist`, and `bin/led-playlist`. Web routes return 400; the web UI checks names before sending. `list_playlists` logs and skips files with invalid names (rename any existing ones with spaces or dots).
-- [ ] **#11 Unescaped values in web UI HTML** (`static/script.js:471`, `value="${option.default}"`). Text containing `"` breaks the input; stored XSS.
+- [x] **#11 Unescaped values in web UI HTML** (`static/script.js:471`, `value="${option.default}"`). Text containing `"` breaks the input; stored XSS.
+  - Fixed: added `escapeHtml()` in `script.js` and wrapped every value interpolated into `innerHTML` templates (option descriptions, ids, defaults/current values, playlist effect names and params). Inline `onclick` handlers still use raw option keys, which are Python identifiers from code.
 - [ ] **#12 Socket permissions (unverified).** Root-created socket with umask 022 likely rejects non-root `bin/led-control`, though docs show it run without sudo.
 - [ ] **#13 No access control** on the web UI. Consider basic auth or binding to a specific interface.
 
