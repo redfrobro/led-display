@@ -33,6 +33,7 @@ _DEFAULTS = {
         'speed': 1.0,
         'port': 80,
         'socket': '/tmp/led-matrix.sock',
+        'socket_group': 'gpio',
     },
     'startup': {
         'display_duration': 15,

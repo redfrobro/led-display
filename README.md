@@ -191,8 +191,10 @@ bin/led-control logs 50          # Last 50 lines
 
 # Turn the display off, or shut down the daemon
 bin/led-control stop             # Turn display off (same as off)
-bin/led-control kill             # Shut down daemon + web server (SIGTERM)
+sudo bin/led-control kill        # Shut down daemon + web server (SIGTERM; needs sudo)
 ```
+
+`led-control` works without sudo for members of the `gpio` group (Raspberry Pi OS adds the default user to it). The daemon makes its socket `0660` with that group; change it with `socket_group` under `[daemon]` in `settings.toml` (`""` = root only), or add a user with `sudo usermod -aG gpio <user>` (log out and back in afterwards). `kill` always needs sudo because the daemon runs as root.
 
 **Daemon files:**
 | File | Description |
@@ -252,7 +254,7 @@ http://your-pi-ip-address:80
 - **Debounced inputs** - Smooth slider adjustments without flooding commands
 - **Responsive design** - Works on desktop and mobile browsers
 
-The web interface is designed with a dark theme optimized for controlling LED displays. Shutting down the daemon (`bin/led-control kill` or `sudo systemctl stop led-matrix`) shuts down the web server as well.
+The web interface is designed with a dark theme optimized for controlling LED displays. Shutting down the daemon (`sudo bin/led-control kill` or `sudo systemctl stop led-matrix`) shuts down the web server as well.
 
 ## Effects
 
@@ -612,7 +614,7 @@ The warning "Can't set realtime thread priority" is normal in daemon mode and ca
 
 ```bash
 # Clean shutdown first (SIGTERM)
-bin/led-control kill
+sudo bin/led-control kill
 
 # If still stuck, find and kill manually
 cat /tmp/led-matrix.pid

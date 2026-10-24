@@ -39,6 +39,15 @@ def is_daemon_running():
         return False
 
 
+def socket_group():
+    """Group allowed to use the daemon socket (settings.toml [daemon] socket_group)"""
+    try:
+        import config
+        return config.settings['daemon'].get('socket_group', 'gpio')
+    except Exception:
+        return 'gpio'
+
+
 def send_command(cmd):
     """Send command to daemon and return a response"""
     try:
@@ -76,6 +85,9 @@ def send_command(cmd):
         return {"status": "error", "message": f"Cannot connect to daemon socket: {SOCKET_PATH}. Start it with: bin/led-daemon"}
     except ConnectionRefusedError:
         return {"status": "error", "message": f"Connection refused to {SOCKET_PATH}. Is the daemon running?"}
+    except PermissionError:
+        return {"status": "error", "message": f"Permission denied on {SOCKET_PATH}. Run with sudo, "
+                f"or add your user to the '{socket_group()}' group (settings.toml [daemon] socket_group)"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -119,7 +131,11 @@ def kill_daemon():
         with open(PID_FILE, 'r') as f:
             pid = int(f.read().strip())
 
-        os.kill(pid, signal.SIGTERM)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except PermissionError:
+            print("Error: Permission denied (the daemon runs as root). Use: sudo bin/led-control kill")
+            return False
         print(f"Sent SIGTERM to daemon process {pid}")
 
         # Clean up PID file
@@ -215,7 +231,7 @@ def print_usage():
     print("  led-control list_playlists")
     print("  led-control save_playlist my-custom")
     print("  led-control stop")
-    print("  led-control kill")
+    print("  sudo led-control kill   # needs sudo: the daemon runs as root")
 
 
 def main(args=None):

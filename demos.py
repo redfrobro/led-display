@@ -17,6 +17,7 @@ import os
 import argparse
 import logging
 import signal
+import grp
 import socket
 import threading
 import json
@@ -343,6 +344,32 @@ def playlist_settings(playlist_data):
 EFFECT_ERROR_BACKOFF = 2  # Seconds to wait after an effect raises before moving on
 
 PID_FILE = "/tmp/led-matrix.pid"
+
+
+def set_socket_permissions(path):
+    """Let members of settings [daemon] socket_group use the control socket (mode 0660)
+
+    Connecting to a Unix socket needs write permission, and the daemon runs as root,
+    so with the default umask only root could use led-control.
+    """
+    group = _cfg.settings['daemon'].get('socket_group', 'gpio')
+    gid = None
+    if group:
+        try:
+            gid = grp.getgrnam(group).gr_gid
+        except KeyError:
+            sudo_gid = os.environ.get('SUDO_GID')
+            if sudo_gid and sudo_gid.isdigit():
+                gid = int(sudo_gid)
+                logger.warning(f"Socket group '{group}' not found; using the sudo user's group (gid {gid})")
+            else:
+                logger.warning(f"Socket group '{group}' not found; socket is usable by its owner only")
+    try:
+        if gid is not None:
+            os.chown(path, -1, gid)
+        os.chmod(path, 0o660)
+    except OSError as e:
+        logger.warning(f"Could not set permissions on {path}: {e}")
 
 
 def running_daemon_pid(socket_path):
@@ -890,6 +917,7 @@ class DaemonController:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             sock.bind(self.socket_path)
+            set_socket_permissions(self.socket_path)
             sock.listen(1)
             sock.settimeout(1.0)
         except Exception:
@@ -1309,7 +1337,7 @@ if __name__ == "__main__":
     other_pid = running_daemon_pid(args.socket)
     if other_pid is not None:
         print(f"Error: LED daemon already running{f' (PID {other_pid})' if other_pid > 0 else ''}")
-        print("Shut it down with: bin/led-control kill")
+        print("Shut it down with: sudo bin/led-control kill")
         sys.exit(1)
 
     # Initialize matrix for normal mode

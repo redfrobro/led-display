@@ -32,7 +32,9 @@ Web server runs as root on `0.0.0.0:80` with no auth.
   - Fixed: `get_playlist_path` only accepts `[A-Za-z0-9][A-Za-z0-9_-]{0,63}` and raises `ValueError` otherwise, covering the web API, socket `load_playlist`/`save_playlist`, `--playlist`, and `bin/led-playlist`. Web routes return 400; the web UI checks names before sending. `list_playlists` logs and skips files with invalid names (rename any existing ones with spaces or dots).
 - [x] **#11 Unescaped values in web UI HTML** (`static/script.js:471`, `value="${option.default}"`). Text containing `"` breaks the input; stored XSS.
   - Fixed: added `escapeHtml()` in `script.js` and wrapped every value interpolated into `innerHTML` templates (option descriptions, ids, defaults/current values, playlist effect names and params). Inline `onclick` handlers still use raw option keys, which are Python identifiers from code.
-- [ ] **#12 Socket permissions (unverified).** Root-created socket with umask 022 likely rejects non-root `bin/led-control`, though docs show it run without sudo.
+- [x] **#12 Socket permissions (unverified).** Root-created socket with umask 022 likely rejects non-root `bin/led-control`, though docs show it run without sudo.
+  - Confirmed: the daemon keeps root (`drop_privileges = False`), so the socket was `0755 root:root` and connecting (which needs write permission) failed for normal users.
+  - Fixed: the daemon sets the socket to `0660` with the group from the new `socket_group` setting under `[daemon]` (default `gpio`; falls back to `SUDO_GID` with a warning if the group is missing; `""` = root only). `led-control` explains permission errors, and `kill` says to use sudo instead of printing a bare errno. Docs updated, including `sudo` on every `kill` example.
 - [ ] **#13 No access control** on the web UI. Consider basic auth or binding to a specific interface.
 
 ## Smaller code issues
