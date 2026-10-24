@@ -189,9 +189,9 @@ bin/led-control speed 2.0        # Animation speed (0.1-5.0)
 bin/led-control logs
 bin/led-control logs 50          # Last 50 lines
 
-# Stop the daemon
-bin/led-control stop             # Graceful shutdown
-bin/led-control kill             # Force stop (SIGTERM)
+# Turn the display off, or shut down the daemon
+bin/led-control stop             # Turn display off (same as off)
+bin/led-control kill             # Shut down daemon + web server (SIGTERM)
 ```
 
 **Daemon files:**
@@ -247,12 +247,12 @@ http://your-pi-ip-address:80
   - Fireworks: particles, gravity
   - Lightning: branches, fade, color
   - And 18 more effects with unique parameters
-- **Daemon control** - Stop button (stops both daemon and web server)
+- **Display control** - Stop Display button (turns the display off; the daemon and web server keep running)
 - **Auto-refresh** - Status updates every 2 seconds
 - **Debounced inputs** - Smooth slider adjustments without flooding commands
 - **Responsive design** - Works on desktop and mobile browsers
 
-The web interface is designed with a dark theme optimized for controlling LED displays. When you stop the daemon via the web interface or command line, the web server automatically shuts down as well.
+The web interface is designed with a dark theme optimized for controlling LED displays. Shutting down the daemon (`bin/led-control kill` or `sudo systemctl stop led-matrix`) shuts down the web server as well.
 
 ## Effects
 
@@ -336,8 +336,8 @@ Options:
 | `resume` | Resume paused effect |
 | `set <effect>` | Switch to specific effect by name |
 | `list` | List available effects in current playlist |
-| `stop` | Graceful shutdown |
-| `kill` | Force-stop daemon (SIGTERM) |
+| `stop` | Turn display off (same as `off`) |
+| `kill` | Shut down daemon and web server (SIGTERM, clears display) |
 | `check` | Check if daemon is running |
 | `logs [N]` | Show last N lines of daemon log (default: 20) |
 | `frequency <1-10>` | Adjust spawn frequency |
@@ -611,10 +611,7 @@ The warning "Can't set realtime thread priority" is normal in daemon mode and ca
 ### Killing a Stuck Daemon
 
 ```bash
-# Try graceful stop first
-bin/led-control stop
-
-# If that doesn't work, force kill
+# Clean shutdown first (SIGTERM)
 bin/led-control kill
 
 # If still stuck, find and kill manually

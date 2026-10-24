@@ -16,6 +16,7 @@ import sys
 import os
 import argparse
 import logging
+import signal
 import socket
 import threading
 import json
@@ -340,6 +341,35 @@ def playlist_settings(playlist_data):
 
 
 EFFECT_ERROR_BACKOFF = 2  # Seconds to wait after an effect raises before moving on
+
+PID_FILE = "/tmp/led-matrix.pid"
+
+
+def running_daemon_pid(socket_path):
+    """Return the PID of a running daemon, -1 if only its socket answers, or None.
+
+    The PID file alone isn't trusted: a stale PID may have been reused by an
+    unrelated process, so the process's command line must mention demos.py.
+    """
+    try:
+        with open(PID_FILE) as f:
+            pid = int(f.read().strip())
+        with open(f"/proc/{pid}/cmdline", 'rb') as f:
+            if b'demos.py' in f.read():
+                return pid
+    except (OSError, ValueError):
+        pass
+
+    # Covers a daemon whose PID file went missing
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(1.0)
+    try:
+        sock.connect(socket_path)
+        return -1
+    except OSError:
+        return None
+    finally:
+        sock.close()
 
 
 def run_effect(effect_key, ctx, duration, frequency, opts=None):
@@ -928,7 +958,7 @@ class DaemonController:
 
     def start(self, fork=True):
         """Start daemon threads"""
-        pid_file = "/tmp/led-matrix.pid"
+        pid_file = PID_FILE
         log_path = "/tmp/led-matrix.log"
 
         for f in [pid_file, log_path]:
@@ -964,6 +994,9 @@ class DaemonController:
                 f.write(str(os.getpid()))
             logger.info(f"PID file written: {pid_file}")
 
+        # led-control kill and systemctl stop send SIGTERM; wait() sees running=False and shuts down
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
+
         self.ipc_thread = threading.Thread(target=self.ipc_worker, daemon=False)
         self.ipc_thread.start()
 
@@ -980,40 +1013,48 @@ class DaemonController:
         else:
             logger.info("Daemon started")
 
+    def _handle_sigterm(self, signum, frame):
+        """Request shutdown; runs in the main thread, which is polling in wait()"""
+        logger.info("SIGTERM received, shutting down...")
+        self.running = False
+
     def wait(self):
-        """Wait for threads to finish"""
+        """Run until shutdown is requested (SIGTERM, Ctrl+C) or IPC stops, then shut down"""
         try:
-            self.ipc_thread.join()
-            if self.webserver_thread:
-                self.webserver_thread.join()
+            # Short joins so the SIGTERM handler gets to run promptly
+            while self.running and self.ipc_thread.is_alive():
+                self.ipc_thread.join(timeout=0.5)
         except KeyboardInterrupt:
             logger.info("Interrupted, shutting down...")
+        finally:
+            self.shutdown()
+
+    def shutdown(self):
+        """Stop all threads, clear the display, and remove the PID file"""
+        with self.cond:
             self.running = False
             self.effects_running = False
+            self.cond.notify_all()
 
-            if self.flask_server:
-                try:
-                    logger.info("Shutting down web server...")
-                    self.flask_server.shutdown()
-                except Exception as e:
-                    logger.error(f"Error shutting down web server: {e}")
-
-            self.ipc_thread.join(timeout=2)
-            if self.webserver_thread:
-                self.webserver_thread.join(timeout=2)
-        finally:
-            if self.flask_server:
-                try:
-                    self.flask_server.shutdown()
-                except Exception as e:
-                    logger.debug(f"Web server already shut down: {e}")
-
-            pid_file = "/tmp/led-matrix.pid"
+        if self.flask_server:
             try:
-                os.unlink(pid_file)
-                logger.info("PID file removed")
-            except OSError:
-                pass
+                logger.info("Shutting down web server...")
+                self.flask_server.shutdown()
+            except Exception as e:
+                logger.error(f"Error shutting down web server: {e}")
+
+        # The IPC loop removes the socket; the effect worker clears the matrix
+        for thread in (self.effect_thread, self.ipc_thread, self.webserver_thread):
+            if thread:
+                thread.join(timeout=3)
+        if matrix:
+            matrix.Clear()
+
+        try:
+            os.unlink(PID_FILE)
+            logger.info("PID file removed")
+        except OSError:
+            pass
 
 
 def parse_args():
@@ -1263,6 +1304,13 @@ if __name__ == "__main__":
             print(f"Error: Permission denied. Port {args.port} requires sudo.")
             sys.exit(1)
         sys.exit(0)
+
+    # Only one process can drive the matrix; check before touching the PID/log files
+    other_pid = running_daemon_pid(args.socket)
+    if other_pid is not None:
+        print(f"Error: LED daemon already running{f' (PID {other_pid})' if other_pid > 0 else ''}")
+        print("Shut it down with: bin/led-control kill")
+        sys.exit(1)
 
     # Initialize matrix for normal mode
     if not args.daemon:

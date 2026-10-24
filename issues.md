@@ -18,9 +18,11 @@ Findings from a code and docs review (2026-10-24). Static review only, not verif
   - Fixed: single mode always runs the effect indefinitely; `set` no longer touches `self.duration`. `duration` in single mode notes it applies in playlist mode.
 - [x] **#7 Empty playlist busy-loops at 100% CPU** (`demos.py:426-439`). The web UI can create and load an empty playlist.
   - Fixed: `load_playlist` refuses a playlist with no effects (keeps the current one); `--playlist` with no effects exits with an error. The worker waits on the condition instead of spinning if the effect list is ever empty, and won't divide by zero if it empties mid-playlist. Saving empty playlists is still allowed so the web UI can build them up.
-- [ ] **#8 `stop` doesn't stop the daemon.** Code treats `stop` as `off` (`demos.py:575`); docs say it shuts down daemon + web server. Nothing sets `running = False` in a detached daemon, and there's no SIGTERM handler, so the matrix isn't cleared and the socket isn't removed (including on `systemctl stop`).
-  - Decision: `stop` should only stop the display (current behaviour). Remaining: fix the docs (#26) and add a SIGTERM handler for clean shutdown.
-- [ ] **#9 Starting a second daemon clobbers the first's PID file** (`demos.py:903`) before checking whether one is running.
+- [x] **#8 `stop` doesn't stop the daemon.** Code treats `stop` as `off` (`demos.py:575`); docs say it shuts down daemon + web server. Nothing sets `running = False` in a detached daemon, and there's no SIGTERM handler, so the matrix isn't cleared and the socket isn't removed (including on `systemctl stop`).
+  - Decision: `stop` should only stop the display (current behaviour).
+  - Fixed: SIGTERM handler; `wait()` polls and runs a shared `shutdown()` (stop effects/IPC/web, join threads, clear matrix, remove socket + PID file). Docs, `led-control` help, and the web UI button now say `stop` = display off, `kill` = clean daemon shutdown. Tested with a forked daemon: exits in ~0.4s with display cleared and files removed.
+- [x] **#9 Starting a second daemon clobbers the first's PID file** (`demos.py:903`) before checking whether one is running.
+  - Fixed: `running_daemon_pid()` checks the PID file (process must be a live `demos.py`, so reused PIDs don't count) and whether the socket answers; daemon and normal mode both refuse to start if one is running. Note: with the systemd service installed, a manually started daemon makes the service fail/retry until it's shut down.
 
 ## Security
 
@@ -48,6 +50,6 @@ Web server runs as root on `0.0.0.0:80` with no auth.
 
 - [ ] **#24** CLAUDE.md and argparse help (`demos.py:1019-1021`) say 22 effects / 12 low-power / 10 high-power; actual is 26 (+`text`) / 14 / 12.
 - [ ] **#25** CLAUDE.md "Architecture" is outdated (no mention of `effects/`, `webserver.py`, `playlist_manager.py`, `config.py`/`settings.toml`, moods, `mood`/`duration` commands; options table missing `--opts`/`--list-opts`).
-- [ ] **#26** `stop` described as shutting down the daemon in CLAUDE.md, README (lines 193, 250, 255), and `led-control` help (see #8).
+- [x] **#26** `stop` described as shutting down the daemon in CLAUDE.md, README (lines 193, 250, 255), and `led-control` help (see #8).
 - [ ] **#27** `requirements.txt` doesn't say `rgbmatrix` must be built from rpi-rgb-led-matrix; `werkzeug` is redundant; Pillow is only used by `blink.py`.
 - [ ] **#28** Cleanup: stray `package-lock.json`; `text_config.json` not in `.gitignore`; debug prints in `blink.py`; `run_demos.sh` duplicates `bin/led-demos` with a hardcoded venv path.

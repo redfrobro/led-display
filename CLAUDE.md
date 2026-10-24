@@ -54,8 +54,8 @@ bin/led-control set fireworks       # Switch to specific effect
 bin/led-control frequency 8         # Adjust spawn rate (1-10)
 bin/led-control brightness 50       # Adjust brightness (0-100)
 bin/led-control speed 2.0           # Adjust animation speed (0.1-5.0)
-bin/led-control stop                # Stop daemon gracefully
-bin/led-control kill                # Force-stop daemon (SIGTERM)
+bin/led-control stop                # Turn display off (same as off)
+bin/led-control kill                # Shut down daemon + web server (SIGTERM, clean shutdown)
 
 # Daemon files
 # Socket: /tmp/led-matrix.sock
@@ -100,7 +100,7 @@ The web interface provides:
 - Playlist mode toggle button
 - Global sliders for brightness, speed, and frequency
 - Effect-specific parameter controls in single mode
-- Daemon control (stop - shuts down both daemon and web server)
+- Stop Display button (turns the display off; daemon and web server keep running)
 
 **Playback Modes:**
 - **Playlist mode**: Cycles through all effects automatically
@@ -109,7 +109,7 @@ The web interface provides:
 - Next/Previous buttons switch to playlist mode
 - Playlist button returns to playlist mode
 
-**Note:** The `bin/led-webserver` script starts the daemon with the web server enabled. Stopping the daemon automatically stops the web server. You can also run `--webserver` standalone (without `--daemon`) to start only the web interface if a daemon is already running separately.
+**Note:** The `bin/led-webserver` script starts the daemon with the web server enabled. Shutting down the daemon (`bin/led-control kill` or `systemctl stop`) also stops the web server. You can also run `--webserver` standalone (without `--daemon`) to start only the web interface if a daemon is already running separately.
 
 ## demos.py Command-Line Options
 
