@@ -141,6 +141,23 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
                 total_width += char_width
         return total_width
 
+    # Frame canvases carry their own brightness, so copy the matrix's before drawing
+    def hold_static(canvas, draw):
+        """Show a static frame until interrupted or timed out, redrawing when brightness changes"""
+        drawn_brightness = None
+        while True:
+            if ctx.matrix.brightness != drawn_brightness:
+                drawn_brightness = ctx.matrix.brightness
+                canvas.Clear()
+                canvas.brightness = drawn_brightness
+                draw(canvas)
+                canvas = ctx.matrix.SwapOnVSync(canvas)
+            if ctx.check_interrupt():
+                return
+            if duration > 0 and time.time() - start_time >= duration:
+                return
+            time.sleep(0.1)
+
     # Split text into lines
     lines = text.split('\n') if '\n' in text else [text]
 
@@ -173,6 +190,7 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
                 if duration > 0 and time.time() - start_time >= duration:
                     return
                 canvas.Clear()
+                canvas.brightness = ctx.matrix.brightness
                 for i, (line, lw) in enumerate(zip(lines, line_widths)):
                     x_pos = ctx.cols - scroll_offset
                     y_pos = start_y + i * line_spacing
@@ -184,18 +202,12 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
                 time.sleep(0.05)
         else:
             # Static multi-line: center each line individually
-            canvas.Clear()
-            for i, (line, lw) in enumerate(zip(lines, line_widths)):
-                x_pos = max(0, (ctx.cols - lw) // 2)
-                y_pos = start_y + i * line_spacing
-                draw_text_tight(canvas, font, x_pos, y_pos, text_color, line)
-            canvas = ctx.matrix.SwapOnVSync(canvas)
-            while True:
-                if ctx.check_interrupt():
-                    return
-                if duration > 0 and time.time() - start_time >= duration:
-                    return
-                time.sleep(0.1)
+            def draw(c):
+                for i, (line, lw) in enumerate(zip(lines, line_widths)):
+                    x_pos = max(0, (ctx.cols - lw) // 2)
+                    y_pos = start_y + i * line_spacing
+                    draw_text_tight(c, font, x_pos, y_pos, text_color, line)
+            hold_static(canvas, draw)
     else:
         # Single-line mode
         text_width = measure_text_tight(font, lines[0])
@@ -211,6 +223,7 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
                 if duration > 0 and time.time() - start_time >= duration:
                     return
                 canvas.Clear()
+                canvas.brightness = ctx.matrix.brightness
                 x_pos = ctx.cols - scroll_offset
                 draw_text_tight(canvas, font, x_pos, y_pos, text_color, lines[0])
                 canvas = ctx.matrix.SwapOnVSync(canvas)
@@ -220,12 +233,4 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
                 time.sleep(0.05)
         else:
             x_pos = max(0, (ctx.cols - text_width) // 2)
-            canvas.Clear()
-            draw_text_tight(canvas, font, x_pos, y_pos, text_color, lines[0])
-            canvas = ctx.matrix.SwapOnVSync(canvas)
-            while True:
-                if ctx.check_interrupt():
-                    return
-                if duration > 0 and time.time() - start_time >= duration:
-                    return
-                time.sleep(0.1)
+            hold_static(canvas, lambda c: draw_text_tight(c, font, x_pos, y_pos, text_color, lines[0]))

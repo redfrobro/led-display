@@ -157,6 +157,8 @@ def init_matrix(for_daemon=False):
     else:
         matrix = RGBMatrix(options=options)
 
+    matrix.brightness = _cfg.settings['daemon']['brightness']
+
 
 # Effect options storage
 EFFECT_OPTIONS = {}
@@ -360,6 +362,8 @@ class DaemonController:
         # Adjustable parameters
         self.frequency = args.frequency
         self.brightness = _cfg.settings['daemon']['brightness']
+        # True while the current effect has a playlist brightness override
+        self.brightness_overridden = False
         self.speed = _cfg.settings['daemon']['speed']
         self.duration = args.duration
         self.effect_options = EFFECT_OPTIONS.copy()
@@ -405,11 +409,6 @@ class DaemonController:
 
         with self.cond:
             return not self.running or not self.effects_running
-
-    def apply_brightness(self, r, g, b):
-        """Scale RGB values by brightness percentage"""
-        factor = self.brightness / 100.0
-        return int(r * factor), int(g * factor), int(b * factor)
 
     def effect_worker(self, show_startup_info=True):
         """Run effects in a loop"""
@@ -464,6 +463,9 @@ class DaemonController:
 
                         if 'speed' not in opts:
                             opts['speed'] = effect_speed
+
+                        self.brightness_overridden = effect_params.get('brightness') is not None
+                        matrix.brightness = effect_brightness
 
                     name, func, _ = DEMOS[key]
                     logger.info(f"Starting effect '{key}': {name}")
@@ -627,6 +629,9 @@ class DaemonController:
                     bright = int(arg)
                     if 0 <= bright <= 100:
                         self.brightness = bright
+                        # A playlist override wins until the next effect starts
+                        if not self.brightness_overridden:
+                            matrix.brightness = bright
                         return {"status": "ok", "brightness": bright, "message": f"Brightness set to {bright}%"}
                     else:
                         return {"status": "error", "message": "Brightness must be 0-100"}
@@ -1306,6 +1311,8 @@ if __name__ == "__main__":
                     effect_param = effect_params.get(key, {})
                     effect_frequency = effect_param.get('frequency') if effect_param.get('frequency') is not None else args.frequency
                     effect_speed = effect_param.get('speed') if effect_param.get('speed') is not None else 1.0
+                    effect_brightness = effect_param.get('brightness') if effect_param.get('brightness') is not None else _cfg.settings['daemon']['brightness']
+                    matrix.brightness = effect_brightness
                     playlist_opts = effect_param.get('options', {})
 
                     opts = get_effect_options(key)
