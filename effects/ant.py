@@ -65,4 +65,4 @@ def ant(ctx, duration=8, num_ants=4, check_interrupt=None, **kwargs):
         for a in ants:
             ctx.matrix.SetPixel(a['x'], a['y'], 255, 255, 255)
 
-        time.sleep(0.01)
+        ctx.sleep(0.01)

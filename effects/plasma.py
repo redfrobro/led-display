@@ -25,4 +25,4 @@ def plasma(ctx, duration=8, frequency=5, speed=1.0, check_interrupt=None, **kwar
                 r, g, b = hsv_to_rgb(hue, 1.0, v)
                 ctx.matrix.SetPixel(x, y, r, g, b)
         t += 0.15 * speed
-        time.sleep(0.02)
+        ctx.sleep(0.02)

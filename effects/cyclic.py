@@ -48,4 +48,4 @@ def cyclic(ctx, duration=8, states=16, threshold=1, check_interrupt=None, **kwar
                 new_grid[y][x] = next_state if count >= threshold else state
 
         grid = new_grid
-        time.sleep(0.05)
+        ctx.sleep(0.05)

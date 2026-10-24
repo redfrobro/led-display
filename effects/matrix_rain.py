@@ -50,4 +50,4 @@ def matrix_rain(ctx, duration=8, frequency=5, speed=1.0, length=10, check_interr
         if randrange(spawn_rate) == 0 and len(drops) < ctx.cols:
             drops.append({'x': randrange(ctx.cols), 'y': randrange(-10, 0), 'speed': randrange(1, 4), 'length': randrange(min_len, max_len)})
 
-        time.sleep(0.05)
+        ctx.sleep(0.05)

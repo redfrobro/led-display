@@ -454,15 +454,17 @@ class DaemonController:
                         effect_params = self.effect_params.get(key, {})
                         effect_brightness = effect_params.get('brightness') if effect_params.get('brightness') is not None else self.brightness
                         effect_frequency = effect_params.get('frequency') if effect_params.get('frequency') is not None else self.frequency
-                        effect_speed = effect_params.get('speed') if effect_params.get('speed') is not None else self.speed
+                        # A playlist speed is fixed for the effect; otherwise follow the live global value
+                        speed_override = effect_params.get('speed')
+                        if speed_override is not None:
+                            get_speed = lambda: speed_override
+                        else:
+                            get_speed = lambda: self.speed
 
                         opts = get_effect_options(key)
                         playlist_opts = effect_params.get('options', {})
                         opts.update(playlist_opts)
                         opts.update(self.effect_options.get(key, {}))
-
-                        if 'speed' not in opts:
-                            opts['speed'] = effect_speed
 
                         self.brightness_overridden = effect_params.get('brightness') is not None
                         matrix.brightness = effect_brightness
@@ -471,7 +473,8 @@ class DaemonController:
                     logger.info(f"Starting effect '{key}': {name}")
 
                     # Create context for this effect
-                    ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=self.should_interrupt)
+                    ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=self.should_interrupt,
+                                        get_speed=get_speed)
 
                     duration = effect_duration if effect_duration > 0 else 999999
                     run_effect(key, ctx, duration, effect_frequency, opts)
@@ -1310,22 +1313,23 @@ if __name__ == "__main__":
                     effect_duration = effect_durations.get(key, args.duration)
                     effect_param = effect_params.get(key, {})
                     effect_frequency = effect_param.get('frequency') if effect_param.get('frequency') is not None else args.frequency
-                    effect_speed = effect_param.get('speed') if effect_param.get('speed') is not None else 1.0
+                    effect_speed = effect_param.get('speed') if effect_param.get('speed') is not None else _cfg.settings['daemon']['speed']
                     effect_brightness = effect_param.get('brightness') if effect_param.get('brightness') is not None else _cfg.settings['daemon']['brightness']
                     matrix.brightness = effect_brightness
                     playlist_opts = effect_param.get('options', {})
 
                     opts = get_effect_options(key)
                     opts.update(playlist_opts)
-                    if 'speed' not in opts:
-                        opts['speed'] = effect_speed
 
                     logger.debug(f"Starting effect '{key}' with options: {opts}")
                     print(f"Now showing: {name}")
 
+                    effect_ctx = EffectContext(matrix, ROWS, COLS, check_interrupt=lambda: False,
+                                               get_speed=lambda: effect_speed)
+
                     start = time.time()
                     duration = effect_duration if effect_duration > 0 else 999999
-                    run_effect(key, ctx, duration, effect_frequency, opts)
+                    run_effect(key, effect_ctx, duration, effect_frequency, opts)
 
                     elapsed = time.time() - start
                     logger.debug(f"Effect '{key}' finished after {elapsed:.2f}s")

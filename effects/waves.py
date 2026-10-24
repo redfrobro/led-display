@@ -50,4 +50,4 @@ def waves(ctx, duration=8, frequency=5, wave_count=3, speed=1.0, check_interrupt
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
         t += 0.1
-        time.sleep(0.025)
+        ctx.sleep(0.025)

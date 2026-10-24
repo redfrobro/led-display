@@ -53,4 +53,4 @@ def meteor(ctx, duration=8, frequency=5, length=12, speed=1.0, check_interrupt=N
                 new_meteors.append(m)
 
         meteors = new_meteors
-        time.sleep(0.04)
+        ctx.sleep(0.04)

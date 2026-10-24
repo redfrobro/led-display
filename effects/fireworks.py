@@ -54,4 +54,4 @@ def fireworks(ctx, duration=8, frequency=5, particles=30, gravity=0.1, check_int
                 new_particles.append(p)
 
         active_particles = new_particles
-        time.sleep(0.04)
+        ctx.sleep(0.04)

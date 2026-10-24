@@ -67,4 +67,4 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
                 ball['vy'] *= -1
                 ball['y'] = max(1, min(ctx.rows - 2, ball['y']))
 
-        time.sleep(0.05)
+        ctx.sleep(0.05)

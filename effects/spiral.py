@@ -27,4 +27,4 @@ def spiral(ctx, duration=8, frequency=5, speed=5, density=10, check_interrupt=No
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
         hue_offset += speed
-        time.sleep(0.02)
+        ctx.sleep(0.02)

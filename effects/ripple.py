@@ -56,4 +56,4 @@ def ripple(ctx, duration=8, frequency=5, auto_drops=True, drop_rate=30, check_in
                     ctx.matrix.SetPixel(x, y, bg_r, bg_g, bg_b)
 
         frame += 1
-        time.sleep(0.03)
+        ctx.sleep(0.03)

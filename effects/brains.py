@@ -74,4 +74,4 @@ def brains(ctx, duration=8, density=20, check_interrupt=None, **kwargs):
         if alive_count == 0:
             grid, hues = make_grid()
 
-        time.sleep(0.05)
+        ctx.sleep(0.05)

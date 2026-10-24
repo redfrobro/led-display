@@ -63,4 +63,4 @@ def pulse(ctx, duration=8, frequency=5, sources=3, speed=1.0, check_interrupt=No
 
         pulses = new_pulses
         frame += 1
-        time.sleep(0.03)
+        ctx.sleep(0.03)

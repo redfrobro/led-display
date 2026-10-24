@@ -58,4 +58,4 @@ def warp(ctx, duration=8, frequency=5, star_count=200, speed=1.0, check_interrup
                     r, g, b = hsv_to_rgb(star['hue'], saturation, brightness)
                     ctx.matrix.SetPixel(px, py, r, g, b)
 
-        time.sleep(0.02)
+        ctx.sleep(0.02)

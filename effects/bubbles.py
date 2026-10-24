@@ -58,4 +58,4 @@ def bubbles(ctx, duration=8, frequency=5, size=2, wobble=2, check_interrupt=None
                 new_bubbles.append(bub)
 
         bubble_list = new_bubbles
-        time.sleep(0.04)
+        ctx.sleep(0.04)

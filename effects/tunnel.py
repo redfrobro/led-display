@@ -53,4 +53,4 @@ def tunnel(ctx, duration=8, frequency=5, speed=1.0, rings=20, check_interrupt=No
 
         offset = (offset + 0.15 * speed) % rings
         hue_offset = (hue_offset + 2) % 360
-        time.sleep(0.02)
+        ctx.sleep(0.02)

@@ -6,6 +6,7 @@ This module provides:
 - EffectContext: Encapsulates matrix and utilities for effects
 """
 
+import time
 from random import randrange
 from . import utils
 from .utils import hsv_to_rgb, fast_sin, DIST_TABLE, ANGLE_TABLE, ROWS, COLS
@@ -69,7 +70,7 @@ class EffectContext:
     - Precomputed tables (dist_table, angle_table)
     """
 
-    def __init__(self, matrix, rows=ROWS, cols=COLS, check_interrupt=None):
+    def __init__(self, matrix, rows=ROWS, cols=COLS, check_interrupt=None, get_speed=None):
         """Initialize the effect context.
 
         Args:
@@ -77,11 +78,13 @@ class EffectContext:
             rows: Display height (default: 32)
             cols: Display width (default: 64)
             check_interrupt: Callback that returns True if effect should stop
+            get_speed: Callback returning the global speed multiplier (default: 1.0)
         """
         self._matrix = matrix
         self._rows = rows
         self._cols = cols
         self._check_interrupt = check_interrupt
+        self._get_speed = get_speed
 
         # Expose utility functions
         self.hsv_to_rgb = hsv_to_rgb
@@ -120,3 +123,11 @@ class EffectContext:
         if self._check_interrupt is not None:
             return self._check_interrupt()
         return False
+
+    def sleep(self, seconds):
+        """Sleep for one frame, scaled by the global speed (2.0 = half the delay).
+
+        Speed is read on every call so slider changes apply on the next frame.
+        """
+        speed = self._get_speed() if self._get_speed is not None else 1.0
+        time.sleep(seconds / speed)

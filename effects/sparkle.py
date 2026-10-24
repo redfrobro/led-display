@@ -44,4 +44,4 @@ def sparkle(ctx, duration=8, frequency=5, saturation=0.3, check_interrupt=None, 
             ctx.matrix.SetPixel(pos[0], pos[1], 0, 0, 0)
             del stars[pos]
 
-        time.sleep(0.03)
+        ctx.sleep(0.03)

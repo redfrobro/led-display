@@ -55,4 +55,4 @@ def aurora(ctx, duration=8, frequency=5, bands=5, speed=1.0, check_interrupt=Non
                 ctx.matrix.SetPixel(x, y, min(255, int(total_r)), min(255, int(total_g)), min(255, int(total_b)))
 
         t += 0.08
-        time.sleep(0.025)
+        ctx.sleep(0.025)

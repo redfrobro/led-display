@@ -79,4 +79,4 @@ def spectrum(ctx, duration=8, frequency=5, bars=16, reactive=True, check_interru
                     ctx.matrix.SetPixel(x, peak_y, 255, 255, 255)
 
         frame += 1
-        time.sleep(0.03)
+        ctx.sleep(0.03)

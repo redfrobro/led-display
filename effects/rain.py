@@ -80,4 +80,4 @@ def rain(ctx, duration=8, frequency=5, intensity=50, splash_size=3, check_interr
                 new_splashes.append(splash)
 
         splashes = new_splashes
-        time.sleep(0.03)
+        ctx.sleep(0.03)

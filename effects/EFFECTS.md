@@ -94,7 +94,7 @@ def snow(ctx, duration=8, frequency=5, flake_count=50, wind=0.5, check_interrupt
             if 0 <= x < ctx.cols and 0 <= y < ctx.rows:
                 ctx.matrix.SetPixel(x, y, 255, 255, 255)
 
-        time.sleep(0.05)
+        ctx.sleep(0.05)
 ```
 
 ### Step 3: Register the Import
@@ -155,6 +155,7 @@ The `ctx` parameter passed to effects provides access to:
 ### Methods
 
 - `ctx.check_interrupt()` - Returns True if effect should stop (user command, timeout)
+- `ctx.sleep(seconds)` - Frame delay scaled by the global speed setting (use instead of `time.sleep`)
 - `ctx.hsv_to_rgb(h, s, v)` - Convert HSV to RGB (h: 0-360, s/v: 0-1)
 - `ctx.fast_sin(x)` - Fast sine using lookup table
 
@@ -202,6 +203,7 @@ Add any effect-specific parameters with defaults. These will be passed from:
 ### General Guidelines
 
 - Always check `ctx.check_interrupt()` in the main loop
+- Use `ctx.sleep()` for the frame delay so the global speed control works
 - Clear the display when appropriate: `ctx.matrix.Clear()`
 - Use `ctx.rows` and `ctx.cols` instead of hardcoded dimensions
 - Include a docstring describing the effect

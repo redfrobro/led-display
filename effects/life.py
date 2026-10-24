@@ -75,4 +75,4 @@ def life(ctx, duration=8, frequency=5, density=30, colorful=True, check_interrup
             colors = [[ctx.random_hue() if grid[y][x] else 0 for x in range(ctx.cols)] for y in range(ctx.rows)]
             generation = 0
 
-        time.sleep(0.1)
+        ctx.sleep(0.1)

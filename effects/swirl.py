@@ -67,4 +67,4 @@ def swirl(ctx, duration=8, frequency=5, vortices=2, speed=1.0, check_interrupt=N
             vortex['hue'] = (vortex['hue'] + 1) % 360
 
         t += 0.1
-        time.sleep(0.025)
+        ctx.sleep(0.025)

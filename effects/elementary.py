@@ -60,4 +60,4 @@ def elementary(ctx, duration=8, rule=110, check_interrupt=None, **kwargs):
                     r, g, b = 0, 0, 0
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
-        time.sleep(0.05)
+        ctx.sleep(0.05)

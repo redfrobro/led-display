@@ -52,4 +52,4 @@ def starfield(ctx, duration=8, frequency=5, count=100, speed=0.02, check_interru
                         if 0 <= px+dx < ctx.cols and 0 <= py+dy < ctx.rows:
                             ctx.matrix.SetPixel(px+dx, py+dy, r, g, b)
 
-        time.sleep(0.03)
+        ctx.sleep(0.03)

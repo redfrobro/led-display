@@ -49,4 +49,4 @@ def comet(ctx, duration=8, frequency=5, trail=25, speed=0.15, check_interrupt=No
 
         angle += speed
         hue = (hue + 2) % 360
-        time.sleep(0.03)
+        ctx.sleep(0.03)

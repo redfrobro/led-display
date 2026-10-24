@@ -50,4 +50,4 @@ def fire(ctx, duration=8, frequency=5, intensity=4, cooling=3, check_interrupt=N
                     r, g, b = hsv_to_rgb(60, max(0.0, 1.0 - (h - 128) / 128), 1.0)
                 ctx.matrix.SetPixel(x, y, r, g, b)
 
-        time.sleep(0.05)
+        ctx.sleep(0.05)
