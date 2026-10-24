@@ -18,3 +18,5 @@ env/
 *.pid
 *.sock
 *.log
+# Saved text effect settings
+text_config.json

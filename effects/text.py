@@ -16,23 +16,22 @@ logger = logging.getLogger('led-demos')
         font_name=('5x8.bdf', "BDF font file from fonts/ folder"),
         scroll_speed=(2.0, "Scroll speed in pixels/sec (0 = static)"),
         color_hue=(200, "Text color hue 0-360"))
-def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
-                 scroll_speed=None, color_hue=None, check_interrupt=None,
-                 config_loader=None, config_saver=None, project_dir=None, **kwargs):
+def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
+                 scroll_speed=2.0, color_hue=200, check_interrupt=None, **kwargs):
     """Display scrolling or static text on the matrix.
+
+    Only displays; saved settings are loaded and stored by the caller
+    (demos.py merges text_config.json into the options it passes).
 
     Note: duration is respected (0 = run forever, default: 0). Frequency parameter is ignored.
 
     Args:
         ctx: EffectContext with matrix reference
         duration: How long to run (0 = forever)
-        text: Text to display (if None, loads from config)
-        font_name: BDF font file from fonts/ folder (if None, loads from config)
+        text: Text to display (None = 'Hello World')
+        font_name: BDF font file from fonts/ folder
         scroll_speed: Pixels per second for scrolling (0 = static centered)
         color_hue: Color hue 0-360 for text
-        config_loader: Optional function to load config (returns dict with text, font_name, scroll_speed, color_hue)
-        config_saver: Optional function to save individual config options (key, value)
-        project_dir: Project directory for finding fonts (defaults to parent of effects/)
     """
     # Import graphics from rgbmatrix (required for fonts)
     try:
@@ -41,48 +40,11 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name=None,
         logger.error("Could not import graphics from rgbmatrix")
         return
 
-    # Default config values
-    defaults = {
-        'text': 'Hello World',
-        'font_name': '5x8.bdf',
-        'color_hue': 200,
-        'scroll_speed': 2.0
-    }
-
-    # Load config if loader provided and values are None
-    config = defaults.copy()
-    if config_loader is not None:
-        try:
-            loaded = config_loader()
-            config.update(loaded)
-        except Exception as e:
-            logger.warning("Failed to load text effect config: %s" % e)
-
-    # Use provided values or fall back to config
     if text is None:
-        text = config['text']
-    elif config_saver is not None:
-        config_saver('text', text)
+        text = 'Hello World'
 
-    if font_name is None:
-        font_name = config['font_name']
-    elif config_saver is not None:
-        config_saver('font_name', font_name)
-
-    if scroll_speed is None:
-        scroll_speed = config['scroll_speed']
-    elif config_saver is not None:
-        config_saver('scroll_speed', scroll_speed)
-
-    if color_hue is None:
-        color_hue = config['color_hue']
-    elif config_saver is not None:
-        config_saver('color_hue', color_hue)
-
-    # Determine project directory for fonts
-    if project_dir is None:
-        # Default: effects/ is a subdirectory, so parent is project root
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # effects/ is a subdirectory, so parent is project root
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     # Load font using rgbmatrix graphics
     font_path = os.path.join(project_dir, 'fonts', font_name)

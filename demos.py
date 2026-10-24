@@ -265,49 +265,19 @@ def parse_effect_opts(opts_string):
 # Text display configuration
 TEXT_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'text_config.json')
 
-def load_text_config():
-    """Load custom text from config file, or return default"""
-    if os.path.exists(TEXT_CONFIG_FILE):
-        try:
-            with open(TEXT_CONFIG_FILE, 'r') as f:
-                config = json.load(f)
-                return config.get('text', 'Hello World')
-        except Exception as e:
-            logger.warning(f"Failed to load text config: {e}")
-    return 'Hello World'
-
-def save_text_config(text):
-    """Save custom text to config file"""
-    try:
-        config = {}
-        if os.path.exists(TEXT_CONFIG_FILE):
-            try:
-                with open(TEXT_CONFIG_FILE, 'r') as f:
-                    config = json.load(f)
-            except:
-                pass
-        config['text'] = text
-        with open(TEXT_CONFIG_FILE, 'w') as f:
-            json.dump(config, f)
-        logger.info(f"Saved text config: {text}")
-    except Exception as e:
-        logger.error(f"Failed to save text config: {e}")
-
 def load_text_effect_config():
-    """Load all text effect configuration from config file"""
-    defaults = {
-        'text': 'Hello World',
-        'font_name': '6x10.bdf',
-        'color_hue': 200,
-        'scroll_speed': 2.0
-    }
+    """Load saved text effect settings, falling back to the effect's declared defaults"""
+    declared = DEMOS['text'][2]
+    defaults = {k: v[0] for k, v in declared.items()}
+    defaults['text'] = 'Hello World'
     if os.path.exists(TEXT_CONFIG_FILE):
         try:
             with open(TEXT_CONFIG_FILE, 'r') as f:
-                config = {**defaults, **json.load(f)}
-                # Older versions could save numeric text (e.g. "42"), which crashes the effect
-                config['text'] = str(config['text'])
-                return config
+                saved = json.load(f)
+            config = {**defaults, **{k: v for k, v in saved.items() if k in declared}}
+            # Older versions could save numeric text (e.g. "42"), which crashes the effect
+            config['text'] = str(config['text'])
+            return config
         except Exception as e:
             logger.warning(f"Failed to load text effect config: {e}")
     return defaults
@@ -335,7 +305,11 @@ def get_effect_options(effect_name):
     if effect_name not in DEMOS:
         return {}
 
-    defaults = {k: v[0] for k, v in DEMOS[effect_name][2].items()}
+    if effect_name == 'text':
+        # Saved settings (text_config.json) replace the declared defaults
+        defaults = load_text_effect_config()
+    else:
+        defaults = {k: v[0] for k, v in DEMOS[effect_name][2].items()}
     custom = EFFECT_OPTIONS.get(effect_name, {})
     return {**defaults, **custom}
 
@@ -351,12 +325,6 @@ def run_effect(effect_key, ctx, duration, frequency, opts=None):
 
     name, func, _ = DEMOS[effect_key]
     effect_opts = opts or {}
-
-    # Special handling for text effect - pass config loaders
-    if effect_key == 'text':
-        effect_opts['config_loader'] = load_text_effect_config
-        effect_opts['config_saver'] = save_text_effect_option
-        effect_opts['project_dir'] = os.path.dirname(__file__)
 
     # Run the effect
     func(
