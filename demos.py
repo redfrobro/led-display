@@ -195,6 +195,41 @@ def validate_effect_option(effect_name, key, value):
     return True
 
 
+def coerce_option(effect_name, key, value):
+    """Convert a raw option string to the type of the option's default.
+
+    Returns (value, None) on success or (None, error_message).
+    """
+    options = DEMOS[effect_name][2]
+    if key not in options:
+        return None, f"Unknown option '{key}' for {effect_name}"
+
+    default = options[key][0]
+
+    # text defaults to None (load from config) but is always a string; keep its spacing
+    if key == 'text':
+        return value, None
+
+    value = value.strip()
+    if isinstance(default, str):
+        pass
+    elif isinstance(default, bool):
+        if value.lower() not in ("true", "false"):
+            return None, f"{effect_name}.{key} must be true or false"
+        value = value.lower() == "true"
+    elif isinstance(default, (int, float)):
+        try:
+            number = float(value)
+        except ValueError:
+            return None, f"{effect_name}.{key} must be a number, got '{value}'"
+        # Whole-number options round fractional input (web sliders can send 0.1 steps)
+        value = round(number) if isinstance(default, int) else number
+
+    if not validate_effect_option(effect_name, key, value):
+        return None, f"Invalid value '{value}' for {effect_name}.{key}"
+    return value, None
+
+
 def parse_effect_opts(opts_string):
     """Parse effect options string like 'fireworks:particles=50,gravity=0.2;balls:count=8'"""
     if not opts_string:
@@ -216,22 +251,10 @@ def parse_effect_opts(opts_string):
                 continue
             key, value = opt.split("=", 1)
             key = key.strip()
-            value = value.strip()
 
-            # Try to convert to appropriate type
-            try:
-                if value.lower() in ("true", "false"):
-                    value = value.lower() == "true"
-                elif "." in value:
-                    value = float(value)
-                else:
-                    value = int(value)
-            except ValueError:
-                pass
-
-            # Validate value
-            if not validate_effect_option(effect_name, key, value):
-                print(f"Warning: Invalid value '{value}' for {effect_name}.{key}, skipping")
+            value, error = coerce_option(effect_name, key, value)
+            if error:
+                print(f"Warning: {error}, skipping")
                 continue
 
             result[effect_name][key] = value
@@ -281,8 +304,10 @@ def load_text_effect_config():
     if os.path.exists(TEXT_CONFIG_FILE):
         try:
             with open(TEXT_CONFIG_FILE, 'r') as f:
-                config = json.load(f)
-                return {**defaults, **config}
+                config = {**defaults, **json.load(f)}
+                # Older versions could save numeric text (e.g. "42"), which crashes the effect
+                config['text'] = str(config['text'])
+                return config
         except Exception as e:
             logger.warning(f"Failed to load text effect config: {e}")
     return defaults
@@ -313,6 +338,9 @@ def get_effect_options(effect_name):
     defaults = {k: v[0] for k, v in DEMOS[effect_name][2].items()}
     custom = EFFECT_OPTIONS.get(effect_name, {})
     return {**defaults, **custom}
+
+
+EFFECT_ERROR_BACKOFF = 2  # Seconds to wait after an effect raises before moving on
 
 
 def run_effect(effect_key, ctx, duration, frequency, opts=None):
@@ -477,7 +505,14 @@ class DaemonController:
                                         get_speed=get_speed)
 
                     duration = effect_duration if effect_duration > 0 else 999999
-                    run_effect(key, ctx, duration, effect_frequency, opts)
+                    try:
+                        run_effect(key, ctx, duration, effect_frequency, opts)
+                    except Exception as e:
+                        # Treat a crashing effect as finished; back off so one that
+                        # fails instantly can't spin (single mode retries it)
+                        logger.error(f"Effect '{key}' failed: {e}", exc_info=True)
+                        matrix.Clear()
+                        time.sleep(EFFECT_ERROR_BACKOFF)
 
                     with self.cond:
                         if not self.running or not self.effects_running:
@@ -508,6 +543,9 @@ class DaemonController:
             logger.error(f"Effect worker error: {e}", exc_info=True)
         finally:
             logger.info("Effect worker thread exiting")
+            # Mark effects stopped so 'on' can start a new worker
+            with self.cond:
+                self.effects_running = False
             matrix.Clear()
 
     def handle_command(self, cmd):
@@ -674,21 +712,14 @@ class DaemonController:
                 if not arg or "=" not in arg:
                     return {"status": "error", "message": "Usage: opt key=value"}
                 key, value = arg.split("=", 1)
+                key = key.strip()
                 if self.current_effect:
+                    value, error = coerce_option(self.current_effect, key, value)
+                    if error:
+                        return {"status": "error", "message": error}
+
                     if self.current_effect not in self.effect_options:
                         self.effect_options[self.current_effect] = {}
-                    try:
-                        if value.lower() in ("true", "false"):
-                            value = value.lower() == "true"
-                        elif "." in value:
-                            value = float(value)
-                        else:
-                            value = int(value)
-                    except ValueError:
-                        pass
-
-                    if not validate_effect_option(self.current_effect, key, value):
-                        return {"status": "error", "message": f"Invalid value '{value}' for {key}. Must be positive."}
 
                     if self.current_effect == "text" and key == "font_name":
                         font_path = os.path.join(os.path.dirname(__file__), 'fonts', value)
@@ -1329,7 +1360,13 @@ if __name__ == "__main__":
 
                     start = time.time()
                     duration = effect_duration if effect_duration > 0 else 999999
-                    run_effect(key, effect_ctx, duration, effect_frequency, opts)
+                    try:
+                        run_effect(key, effect_ctx, duration, effect_frequency, opts)
+                    except Exception as e:
+                        logger.error(f"Effect '{key}' failed: {e}", exc_info=True)
+                        print(f"Effect '{key}' failed: {e}")
+                        matrix.Clear()
+                        time.sleep(EFFECT_ERROR_BACKOFF)
 
                     elapsed = time.time() - start
                     logger.debug(f"Effect '{key}' finished after {elapsed:.2f}s")

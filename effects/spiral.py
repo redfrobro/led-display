@@ -9,9 +9,9 @@ from .utils import hsv_to_rgb, DIST_TABLE, ANGLE_TABLE
 
 @effect('spiral', 'Spiral',
         category='low_power',
-        speed=(5, "Rotation speed"),
+        speed=(5.0, "Rotation speed"),
         density=(10, "Color band density"))
-def spiral(ctx, duration=8, frequency=5, speed=5, density=10, check_interrupt=None, **kwargs):
+def spiral(ctx, duration=8, frequency=5, speed=5.0, density=10, check_interrupt=None, **kwargs):
     """Spiral pattern from center - optimized for Pi Zero"""
     start_time = time.time()
     hue_offset = 0
