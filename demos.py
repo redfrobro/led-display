@@ -314,6 +314,31 @@ def get_effect_options(effect_name):
     return {**defaults, **custom}
 
 
+def playlist_settings(playlist_data):
+    """Split playlist data into (effect_keys, durations, params).
+
+    durations only holds positive per-effect durations (0 = use the global default);
+    params holds brightness/frequency/speed (None = use global) and options per effect.
+    """
+    effect_keys = []
+    durations = {}
+    params = {}
+    for effect in playlist_data['effects']:
+        key = effect['key']
+        effect_keys.append(key)
+        if effect.get('duration', 0) > 0:
+            durations[key] = effect['duration']
+        if 'params' in effect or 'options' in effect:
+            effect_params = effect.get('params', {})
+            params[key] = {
+                'brightness': effect_params.get('brightness'),
+                'frequency': effect_params.get('frequency'),
+                'speed': effect_params.get('speed'),
+                'options': effect.get('options', {})
+            }
+    return effect_keys, durations, params
+
+
 EFFECT_ERROR_BACKOFF = 2  # Seconds to wait after an effect raises before moving on
 
 
@@ -339,7 +364,8 @@ def run_effect(effect_key, ctx, duration, frequency, opts=None):
 class DaemonController:
     """Controls daemon mode with threading and Unix socket IPC"""
 
-    def __init__(self, socket_path, args, effect_keys, webserver_enabled=False, webserver_port=80):
+    def __init__(self, socket_path, args, effect_keys, webserver_enabled=False, webserver_port=80,
+                 playlist_name=None, playlist_data=None):
         self.socket_path = socket_path
         self.args = args
         self.effect_keys = effect_keys
@@ -372,6 +398,8 @@ class DaemonController:
         self.playlist_data = None
         self.effect_durations = {}
         self.effect_params = {}
+        if playlist_data is not None:
+            self.apply_playlist(playlist_name, playlist_data)
 
         # Web server options
         self.webserver_enabled = webserver_enabled
@@ -390,6 +418,19 @@ class DaemonController:
         self.webserver_thread = None
         self.flask_server = None
         self.cond = threading.Condition()
+
+    def apply_playlist(self, name, playlist_data):
+        """Use a playlist's effects, per-effect settings, and mood. Caller holds the lock or is __init__."""
+        self.effect_keys, self.effect_durations, self.effect_params = playlist_settings(playlist_data)
+        if self.args.shuffle:
+            shuffle(self.effect_keys)
+        self.playlist_data = playlist_data
+        self.current_playlist_name = name
+
+        playlist_mood = playlist_data.get('mood')
+        if playlist_mood and playlist_mood in MOOD_PRESETS:
+            self.mood = playlist_mood
+            set_mood(playlist_mood)
 
     def should_interrupt(self):
         """Called by effect functions to check for commands"""
@@ -442,7 +483,8 @@ class DaemonController:
                         self.jump_to_effect = False
 
                         # Get per-effect parameters
-                        if key == "text" and mode == 'single':
+                        # Single mode stays on the effect; durations only apply in playlist mode
+                        if mode == 'single':
                             effect_duration = 0
                         else:
                             effect_duration = self.effect_durations.get(key, self.duration)
@@ -567,14 +609,12 @@ class DaemonController:
                     target_idx = self.effect_keys.index(arg)
                     self.effect_index = target_idx
                     self.playback_mode = 'single'
-                    self.duration = 0  # Run forever in single mode
                     self.jump_to_effect = True
                     return {"status": "ok", "message": f"Locked on {arg}"}
                 else:
                     self.effect_keys.append(arg)
                     self.effect_index = len(self.effect_keys) - 1
                     self.playback_mode = 'single'
-                    self.duration = 0  # Run forever in single mode
                     self.jump_to_effect = True
                     return {"status": "ok", "message": f"Locked on {arg} (special effect)"}
 
@@ -667,10 +707,10 @@ class DaemonController:
                     dur = int(arg)
                     if dur >= 0:
                         self.duration = dur
-                        if dur == 0:
-                            return {"status": "ok", "duration": dur, "message": "Duration set to forever"}
-                        else:
-                            return {"status": "ok", "duration": dur, "message": f"Duration set to {dur}s"}
+                        message = "Duration set to forever" if dur == 0 else f"Duration set to {dur}s"
+                        if self.playback_mode == 'single':
+                            message += " (applies in playlist mode)"
+                        return {"status": "ok", "duration": dur, "message": message}
                     else:
                         return {"status": "error", "message": "Duration must be >= 0"}
                 except ValueError:
@@ -715,37 +755,13 @@ class DaemonController:
 
                 try:
                     import playlist_manager
-                    playlist_data = playlist_manager.load_playlist(arg)
-                    self.effect_keys = [e['key'] for e in playlist_data['effects']]
-                    self.playlist_data = playlist_data
-                    self.current_playlist_name = arg
-
-                    self.effect_durations = {}
-                    self.effect_params = {}
-
-                    for effect in playlist_data['effects']:
-                        key = effect['key']
-                        if 'duration' in effect and effect['duration'] > 0:
-                            self.effect_durations[key] = effect['duration']
-                        if 'params' in effect or 'options' in effect:
-                            self.effect_params[key] = {
-                                'brightness': effect.get('params', {}).get('brightness'),
-                                'frequency': effect.get('params', {}).get('frequency'),
-                                'speed': effect.get('params', {}).get('speed'),
-                                'options': effect.get('options', {})
-                            }
+                    self.apply_playlist(arg, playlist_manager.load_playlist(arg))
 
                     self.playback_mode = 'playlist'
                     self.effect_index = 0
                     self.skip_to_next = False
                     self.skip_to_prev = False
                     self.jump_to_effect = True
-
-                    # Apply playlist mood if defined
-                    playlist_mood = playlist_data.get('mood')
-                    if playlist_mood and playlist_mood in MOOD_PRESETS:
-                        self.mood = playlist_mood
-                        set_mood(playlist_mood)
 
                     return {
                         "status": "ok",
@@ -1147,13 +1163,12 @@ if __name__ == "__main__":
     playlist_manager.migrate_builtin_playlists()
 
     # Determine which effects to run
+    loaded_playlist_name = None
     loaded_playlist_data = None
     if args.playlist:
         try:
-            playlist_data = playlist_manager.load_playlist(args.playlist)
-            loaded_playlist_data = playlist_data
-            effect_keys = [e['key'] for e in playlist_data['effects']]
-            logger.debug(f"Loaded playlist '{args.playlist}' with {len(effect_keys)} effects")
+            loaded_playlist_data = playlist_manager.load_playlist(args.playlist)
+            loaded_playlist_name = args.playlist
         except FileNotFoundError:
             print(f"Error: Playlist '{args.playlist}' not found")
             print(f"Use 'bin/led-playlist list' to see available playlists")
@@ -1168,50 +1183,28 @@ if __name__ == "__main__":
                 print(f"Error: Unknown effect '{key}'")
                 print(f"Use --list to see available effects")
                 sys.exit(1)
-    elif args.low_power:
-        try:
-            playlist_data = playlist_manager.load_playlist('low-power')
-            loaded_playlist_data = playlist_data
-            effect_keys = [e['key'] for e in playlist_data['effects']]
-        except (FileNotFoundError, ValueError):
-            effect_keys = LOW_POWER_ORDER.copy()
-    elif args.high_power:
-        try:
-            playlist_data = playlist_manager.load_playlist('high-power')
-            loaded_playlist_data = playlist_data
-            effect_keys = [e['key'] for e in playlist_data['effects']]
-        except (FileNotFoundError, ValueError):
-            effect_keys = HIGH_POWER_ORDER.copy()
-    elif args.night:
-        try:
-            playlist_data = playlist_manager.load_playlist('night')
-            loaded_playlist_data = playlist_data
-            effect_keys = [e['key'] for e in playlist_data['effects']]
-        except (FileNotFoundError, ValueError):
-            effect_keys = NIGHT_MODE.copy()
     else:
+        # Built-in playlist, falling back to the hardcoded order if it can't be loaded
+        if args.low_power:
+            builtin, fallback = 'low-power', LOW_POWER_ORDER
+        elif args.high_power:
+            builtin, fallback = 'high-power', HIGH_POWER_ORDER
+        elif args.night:
+            builtin, fallback = 'night', NIGHT_MODE
+        else:
+            builtin, fallback = 'all', DEFAULT_ORDER
         try:
-            playlist_data = playlist_manager.load_playlist('all')
-            loaded_playlist_data = playlist_data
-            effect_keys = [e['key'] for e in playlist_data['effects']]
+            loaded_playlist_data = playlist_manager.load_playlist(builtin)
+            loaded_playlist_name = builtin
         except (FileNotFoundError, ValueError):
-            effect_keys = DEFAULT_ORDER.copy()
+            effect_keys = fallback.copy()
 
-    # Extract per-effect parameters from playlist
+    # Per-effect durations and parameters from the playlist
     effect_durations = {}
     effect_params = {}
     if loaded_playlist_data is not None:
-        for effect in loaded_playlist_data['effects']:
-            key = effect['key']
-            if 'duration' in effect and effect['duration'] > 0:
-                effect_durations[key] = effect['duration']
-            if 'params' in effect or 'options' in effect:
-                effect_params[key] = {
-                    'brightness': effect.get('params', {}).get('brightness'),
-                    'frequency': effect.get('params', {}).get('frequency'),
-                    'speed': effect.get('params', {}).get('speed'),
-                    'options': effect.get('options', {})
-                }
+        effect_keys, effect_durations, effect_params = playlist_settings(loaded_playlist_data)
+        logger.debug(f"Loaded playlist '{loaded_playlist_name}' with {len(effect_keys)} effects")
 
     if args.shuffle:
         shuffle(effect_keys)
@@ -1284,13 +1277,19 @@ if __name__ == "__main__":
             args,
             effect_keys,
             webserver_enabled=args.webserver,
-            webserver_port=args.port
+            webserver_port=args.port,
+            playlist_name=loaded_playlist_name,
+            playlist_data=loaded_playlist_data
         )
         daemon.start(fork=True)
         daemon.wait()
         logger.info("Daemon finished")
     else:
         # Normal mode
+        playlist_mood = loaded_playlist_data.get('mood') if loaded_playlist_data else None
+        if playlist_mood and playlist_mood in MOOD_PRESETS:
+            set_mood(playlist_mood)
+
         print("LED Matrix Demo - Press Ctrl+C to exit")
         print(f"Effects: {', '.join(effect_keys)}")
         print(f"Duration: {'forever' if args.duration == 0 else f'{args.duration}s'} each")
