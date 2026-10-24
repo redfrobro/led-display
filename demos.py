@@ -461,6 +461,11 @@ class DaemonController:
         try:
             while self.running and self.effects_running and (self.args.loops == 0 or loop_count < self.args.loops):
                 with self.cond:
+                    # Nothing to play: wait instead of spinning (load_playlist refuses empty
+                    # playlists, so this is only a guard)
+                    if not self.effect_keys:
+                        self.cond.wait(timeout=1)
+                        continue
                     mode = self.playback_mode
                     start_idx = self.effect_index
                     if mode == 'single':
@@ -527,7 +532,7 @@ class DaemonController:
                     with self.cond:
                         if not self.running or not self.effects_running:
                             break
-                        if self.jump_to_effect:
+                        if self.jump_to_effect or not self.effect_keys:
                             break
                         if self.skip_to_prev:
                             self.effect_index = (idx - 1) % len(self.effect_keys)
@@ -755,7 +760,10 @@ class DaemonController:
 
                 try:
                     import playlist_manager
-                    self.apply_playlist(arg, playlist_manager.load_playlist(arg))
+                    playlist_data = playlist_manager.load_playlist(arg)
+                    if not playlist_data['effects']:
+                        return {"status": "error", "message": f"Playlist '{arg}' has no effects"}
+                    self.apply_playlist(arg, playlist_data)
 
                     self.playback_mode = 'playlist'
                     self.effect_index = 0
@@ -1169,6 +1177,10 @@ if __name__ == "__main__":
         try:
             loaded_playlist_data = playlist_manager.load_playlist(args.playlist)
             loaded_playlist_name = args.playlist
+            if not loaded_playlist_data['effects']:
+                print(f"Error: Playlist '{args.playlist}' has no effects")
+                print(f"Add some with: bin/led-playlist add {args.playlist} <effect>")
+                sys.exit(1)
         except FileNotFoundError:
             print(f"Error: Playlist '{args.playlist}' not found")
             print(f"Use 'bin/led-playlist list' to see available playlists")

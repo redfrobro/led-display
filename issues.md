@@ -16,8 +16,10 @@ Findings from a code and docs review (2026-10-24). Static review only, not verif
   - Fixed: `playlist_settings()` extracts keys/durations/params once; `DaemonController.apply_playlist()` is used at startup and by `load_playlist` (also applies mood, and `--shuffle`). Startup playlists, including built-ins from `--low-power` etc., now set `current_playlist_name`. Normal mode applies the playlist mood. Known limit: settings are keyed by effect name, so duplicate effects in one playlist share the last entry's settings.
 - [x] **#6 `set <effect>` permanently sets global duration to 0** (`demos.py:559`, `:566`). After next/prev/playlist, every effect runs forever.
   - Fixed: single mode always runs the effect indefinitely; `set` no longer touches `self.duration`. `duration` in single mode notes it applies in playlist mode.
-- [ ] **#7 Empty playlist busy-loops at 100% CPU** (`demos.py:426-439`). The web UI can create and load an empty playlist.
+- [x] **#7 Empty playlist busy-loops at 100% CPU** (`demos.py:426-439`). The web UI can create and load an empty playlist.
+  - Fixed: `load_playlist` refuses a playlist with no effects (keeps the current one); `--playlist` with no effects exits with an error. The worker waits on the condition instead of spinning if the effect list is ever empty, and won't divide by zero if it empties mid-playlist. Saving empty playlists is still allowed so the web UI can build them up.
 - [ ] **#8 `stop` doesn't stop the daemon.** Code treats `stop` as `off` (`demos.py:575`); docs say it shuts down daemon + web server. Nothing sets `running = False` in a detached daemon, and there's no SIGTERM handler, so the matrix isn't cleared and the socket isn't removed (including on `systemctl stop`).
+  - Decision: `stop` should only stop the display (current behaviour). Remaining: fix the docs (#26) and add a SIGTERM handler for clean shutdown.
 - [ ] **#9 Starting a second daemon clobbers the first's PID file** (`demos.py:903`) before checking whether one is running.
 
 ## Security
