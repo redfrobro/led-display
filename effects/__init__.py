@@ -1,6 +1,6 @@
 """Modular effects system for LED matrix display.
 
-Auto-discovers and registers all effects from submodules, providing:
+Imports the effect submodules listed below (their @effect decorators register them), providing:
 - DEMOS: Dict of all effects in legacy format for backward compatibility
 - EFFECTS_REGISTRY: New-style registry with full metadata
 - Category lists: LOW_POWER_ORDER, HIGH_POWER_ORDER, NIGHT_MODE, DEFAULT_ORDER
@@ -24,7 +24,8 @@ from .base import EFFECTS_REGISTRY, EffectContext, effect
 from .utils import hsv_to_rgb, fast_sin, SIN_TABLE, DIST_TABLE, ANGLE_TABLE, ROWS, COLS
 
 # Import individual effect modules to trigger registration
-# The @effect decorators in these modules will populate EFFECTS_REGISTRY
+# The @effect decorators in these modules will populate EFFECTS_REGISTRY;
+# import order sets the order within each category list
 
 # Low power effects (Pi Zero compatible)
 from . import plasma
@@ -77,30 +78,11 @@ def _build_demos_dict():
 def _build_category_list(category):
     """Build an ordered list of effect keys for a given category.
 
-    Maintains the original order defined in the effect modules.
+    Uses each effect's @effect(category=...) and keeps registration order,
+    i.e. the import order above.
     """
-    # Define the expected order for each category
-    # This ensures backward compatibility with the original ordering
-    orders = {
-        'low_power': ['plasma', 'fire', 'matrix', 'sparkle', 'meteor', 'spiral',
-                      'balls', 'lightning', 'fireworks', 'starfield', 'bubbles', 'comet',
-                      'ant', 'elementary'],
-        'high_power': ['waves', 'rain', 'life', 'tunnel', 'pulse', 'warp',
-                       'aurora', 'spectrum', 'swirl', 'ripple', 'brains', 'cyclic'],
-        'night': ['matrix', 'sparkle', 'balls', 'lightning', 'fireworks',
-                  'starfield', 'aurora', 'ripple'],
-    }
-
-    if category in orders:
-        # Return predefined order, filtered to only include registered effects
-        return [k for k in orders[category] if k in EFFECTS_REGISTRY]
-
-    # For unknown categories, collect from registry
-    result = []
-    for key, info in EFFECTS_REGISTRY.items():
-        if category in info.get('categories', []):
-            result.append(key)
-    return result
+    return [key for key, info in EFFECTS_REGISTRY.items()
+            if category in info.get('categories', [])]
 
 
 # Build the DEMOS dict for backward compatibility

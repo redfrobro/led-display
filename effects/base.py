@@ -15,6 +15,8 @@ from .utils import hsv_to_rgb, fast_sin, DIST_TABLE, ANGLE_TABLE, ROWS, COLS
 # Format: {'key': {'name': display_name, 'func': function, 'options': {}, 'categories': []}}
 EFFECTS_REGISTRY = {}
 
+VALID_CATEGORIES = ('low_power', 'high_power', 'night', 'special')
+
 
 def effect(key, name, category=None, **options):
     """Decorator to register an effect with metadata.
@@ -44,6 +46,12 @@ def effect(key, name, category=None, **options):
                 categories = [category]
             else:
                 categories = list(category)
+
+        # A typo would silently leave the effect out of every category list
+        unknown = [c for c in categories if c not in VALID_CATEGORIES]
+        if unknown:
+            raise ValueError(f"Effect '{key}': unknown category {unknown}; "
+                             f"valid categories: {', '.join(VALID_CATEGORIES)}")
 
         # Register the effect
         EFFECTS_REGISTRY[key] = {

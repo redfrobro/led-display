@@ -106,6 +106,8 @@ Add an import for your new effect in `effects/__init__.py`:
 from . import snow
 ```
 
+Import order sets where the effect appears within its category lists (and so in `--low-power`, `--night`, the default run and the built-in playlists).
+
 ### Step 4: Done!
 
 No other changes needed. The effect is automatically:
@@ -220,7 +222,7 @@ Effects can belong to multiple categories:
 | `night` | Dark, subtle effects | matrix, lightning, stars |
 | `special` | Unique requirements | text |
 
-Category lists are auto-generated from the `category` parameter in `@effect`.
+Category lists are auto-generated from the `category` parameter in `@effect`, in import order. An unknown category name raises `ValueError` at import.
 
 ## Importing Effects
 
