@@ -39,10 +39,6 @@ from effects import (
 from effects.utils import set_mood, get_mood, MOOD_PRESETS
 import config as _cfg
 
-# Register any custom mood presets from settings.toml
-for _name, _preset in _cfg.settings.get('mood_presets', {}).items():
-    MOOD_PRESETS[_name] = _preset
-
 _display = _cfg.settings['display']
 ROWS = _display['rows']
 COLS = _display['cols']

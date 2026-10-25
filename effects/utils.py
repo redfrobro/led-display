@@ -8,6 +8,8 @@ This module contains common helper functions used across all effects:
 
 import math
 
+import config as _cfg
+
 # Matrix dimensions (constants for table generation)
 ROWS = 32
 COLS = 64
@@ -23,10 +25,10 @@ def fast_sin(x):
     return SIN_TABLE[int(x * 8) & 255]
 
 
-# Mood presets — populated at startup from settings.toml via config.py.
+# Mood presets from settings.toml (via config.py), loaded here so every importer sees them.
 # Keys: hue_lock, hue_range, hue_shift, sat_override, sat_mult, val_mult
 # See settings.toml [mood_presets.*] sections to add or edit moods.
-MOOD_PRESETS = {}
+MOOD_PRESETS = dict(_cfg.settings.get('mood_presets', {}))
 
 _active_mood_name = 'default'
 _active_mood = {}
