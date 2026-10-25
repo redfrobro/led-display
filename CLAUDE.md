@@ -112,6 +112,8 @@ The web interface provides:
 
 **Note:** The `bin/led-webserver` script starts the daemon with the web server enabled. Shutting down the daemon (`sudo bin/led-control kill` or `systemctl stop`) also stops the web server. You can also run `--webserver` standalone (without `--daemon`) to start only the web interface if a daemon is already running separately.
 
+**Access control:** the web UI is open to the network unless a password is set with `bin/led-web-password` (`--remove` to clear). It stores a PBKDF2 hash in `web_password` (gitignored, 0600), and `webserver.py` then requires HTTP Basic Auth (any username). The bind address comes from `host` under `[daemon]` in `settings.toml` (default `0.0.0.0`). Non-GET requests with a cross-site `Origin` header are rejected with 403.
+
 ## demos.py Command-Line Options
 
 ```

@@ -14,6 +14,7 @@ pause      = 0.5                  # Seconds between effects
 brightness = 100                  # Initial brightness (0-100)
 speed      = 1.0                  # Initial animation speed (0.1-5.0)
 port       = 80                   # Web server port (80 requires sudo)
+host       = "0.0.0.0"            # Web server address (127.0.0.1 = this Pi only)
 socket     = "/tmp/led-matrix.sock"
 socket_group = "gpio"              # Group allowed to use led-control without sudo ("" = root only)
 

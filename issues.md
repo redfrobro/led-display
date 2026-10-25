@@ -35,7 +35,8 @@ Web server runs as root on `0.0.0.0:80` with no auth.
 - [x] **#12 Socket permissions (unverified).** Root-created socket with umask 022 likely rejects non-root `bin/led-control`, though docs show it run without sudo.
   - Confirmed: the daemon keeps root (`drop_privileges = False`), so the socket was `0755 root:root` and connecting (which needs write permission) failed for normal users.
   - Fixed: the daemon sets the socket to `0660` with the group from the new `socket_group` setting under `[daemon]` (default `gpio`; falls back to `SUDO_GID` with a warning if the group is missing; `""` = root only). `led-control` explains permission errors, and `kill` says to use sudo instead of printing a bare errno. Docs updated, including `sudo` on every `kill` example.
-- [ ] **#13 No access control** on the web UI. Consider basic auth or binding to a specific interface.
+- [x] **#13 No access control** on the web UI. Consider basic auth or binding to a specific interface.
+  - Fixed: optional HTTP Basic Auth, set with `bin/led-web-password` (PBKDF2 hash in gitignored `web_password`, mode 0600; any username; `--remove` turns it off; no restart needed). Off by default, and the daemon logs a warning while no password is set. New `host` setting under `[daemon]` picks the bind address, replacing the hard-coded `0.0.0.0` in daemon and standalone mode. Non-GET requests with a cross-site `Origin` get 403, which also covers the body-less `/api/start` and `/load` routes. Successful password checks are cached in memory, since the UI polls every second and hashing is slow on a Pi Zero.
 
 ## Smaller code issues
 

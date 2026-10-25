@@ -9,13 +9,66 @@ import sys
 import socket
 import json
 import argparse
-from flask import Flask, render_template, jsonify, request
+import hashlib
+from urllib.parse import urlparse
+from flask import Flask, Response, render_template, jsonify, request
+from werkzeug.security import check_password_hash
 
 # Import led_control functions
 sys.path.insert(0, os.path.dirname(__file__))
 from led_control import send_command, is_daemon_running, SOCKET_PATH
+import config as _cfg
 
 app = Flask(__name__)
+
+# Password hash written by bin/led-web-password; no file = no login required
+PASSWORD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web_password')
+
+
+def load_password_hash():
+    """Return the stored password hash, or None if no password is set"""
+    try:
+        with open(PASSWORD_FILE) as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+def password_enabled():
+    return load_password_hash() is not None
+
+
+# Hashing is slow on a Pi Zero and the UI polls every second, so remember passwords that matched
+_verified = set()
+
+
+def password_matches(password_hash, password):
+    key = (password_hash, hashlib.sha256(password.encode('utf-8')).hexdigest())
+    if key in _verified:
+        return True
+    if not check_password_hash(password_hash, password):
+        return False
+    if len(_verified) > 32:
+        _verified.clear()
+    _verified.add(key)
+    return True
+
+
+@app.before_request
+def check_access():
+    """Block cross-site writes, and require the password if one is set"""
+    # Browsers send Origin on cross-site POSTs; refuse those so other pages can't drive the display
+    if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+        origin = request.headers.get('Origin')
+        if origin and urlparse(origin).netloc != request.host:
+            return jsonify({'error': 'Cross-site request blocked'}), 403
+
+    # Read on every request so setting or removing the password needs no restart
+    password_hash = load_password_hash()
+    if password_hash:
+        auth = request.authorization
+        if not auth or not auth.password or not password_matches(password_hash, auth.password):
+            return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="LED Matrix"'})
 
 
 @app.route('/')
@@ -352,12 +405,15 @@ def main():
     parser = argparse.ArgumentParser(description='LED Matrix Web Control Interface')
     parser.add_argument('-p', '--port', type=int, default=80,
                         help='Port to run web server on (default: 80, requires sudo)')
-    parser.add_argument('--host', default='0.0.0.0',
-                        help='Host to bind to (default: 0.0.0.0)')
+    parser.add_argument('--host', default=_cfg.settings['daemon']['host'],
+                        help='Host to bind to (default: settings.toml [daemon] host)')
     args = parser.parse_args()
 
     if args.port < 1024 and os.geteuid() != 0:
         print(f"Warning: Port {args.port} requires root privileges. Run with sudo or use a port >= 1024")
+
+    if not password_enabled():
+        print("Warning: web UI has no password. Set one with: bin/led-web-password")
 
     print(f"Starting LED Matrix Web Server on http://{args.host}:{args.port}")
     print("Press Ctrl+C to stop")

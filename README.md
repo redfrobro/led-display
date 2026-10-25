@@ -256,6 +256,19 @@ http://your-pi-ip-address:80
 
 The web interface is designed with a dark theme optimized for controlling LED displays. Shutting down the daemon (`sudo bin/led-control kill` or `sudo systemctl stop led-matrix`) shuts down the web server as well.
 
+#### Securing the Web UI
+
+By default anyone on your network can use the web interface (the daemon logs a warning about this at startup).
+
+```bash
+bin/led-web-password            # Set or change a password (takes effect immediately)
+bin/led-web-password --remove   # Remove it
+```
+
+The browser then asks for a login: any username, plus this password. Only a salted hash is stored, in `web_password` (mode 0600, not tracked by git). To limit who can reach the server at all, set `host` under `[daemon]` in `settings.toml`: `"127.0.0.1"` for this Pi only, or one of the Pi's LAN addresses. The server also rejects POSTs sent from other websites, so a page you visit can't control the display.
+
+The login uses HTTP Basic Auth over plain HTTP, so someone watching your network traffic could read the password. It keeps casual users out on a home network but isn't strong protection on an untrusted one.
+
 ## Effects
 
 ### Low Power Effects (Pi Zero Compatible)
@@ -368,7 +381,9 @@ pause      = 0.5    # Seconds between effects
 brightness = 100    # Initial brightness (0-100)
 speed      = 1.0    # Initial animation speed (0.1-5.0)
 port       = 80     # Web server port (80 requires sudo)
+host       = "0.0.0.0"  # Web server address (127.0.0.1 = this Pi only)
 socket     = "/tmp/led-matrix.sock"
+socket_group = "gpio"   # Group allowed to use led-control without sudo ("" = root only)
 
 [startup]
 display_duration = 15      # Seconds to show IP address on boot

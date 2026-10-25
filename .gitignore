@@ -20,3 +20,6 @@ env/
 *.log
 # Saved text effect settings
 text_config.json
+# Web UI password hash (bin/led-web-password)
+web_password
+web_password.tmp

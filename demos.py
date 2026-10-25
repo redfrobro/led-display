@@ -967,8 +967,12 @@ class DaemonController:
             flask_log = flask_logging.getLogger('werkzeug')
             flask_log.setLevel(flask_logging.ERROR)
 
+            if not webserver.password_enabled():
+                logger.warning("Web UI has no password: anyone on the network can control the display. "
+                               "Set one with: bin/led-web-password")
+
             self.flask_server = make_server(
-                '0.0.0.0',
+                _cfg.settings['daemon']['host'],
                 self.webserver_port,
                 webserver.app,
                 threaded=True
@@ -1324,7 +1328,9 @@ if __name__ == "__main__":
 
         try:
             import webserver
-            webserver.app.run(host='0.0.0.0', port=args.port, debug=False)
+            if not webserver.password_enabled():
+                print("Warning: web UI has no password. Set one with: bin/led-web-password")
+            webserver.app.run(host=_cfg.settings['daemon']['host'], port=args.port, debug=False)
         except ImportError as e:
             print(f"Error: Failed to import webserver module: {e}")
             sys.exit(1)

@@ -32,6 +32,7 @@ _DEFAULTS = {
         'brightness': 100,
         'speed': 1.0,
         'port': 80,
+        'host': '0.0.0.0',
         'socket': '/tmp/led-matrix.sock',
         'socket_group': 'gpio',
     },
