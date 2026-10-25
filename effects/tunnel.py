@@ -22,7 +22,7 @@ def tunnel(ctx, duration=8, frequency=5, speed=1.0, rings=20, check_interrupt=No
         if ctx.check_interrupt():
             return
 
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
         cx_center, cy_center = ctx.cols // 2, ctx.rows // 2
 
         # Draw concentric rings
@@ -49,8 +49,9 @@ def tunnel(ctx, duration=8, frequency=5, speed=1.0, rings=20, check_interrupt=No
                 py = int(cy_center + radius * math.sin(angle))
 
                 if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
-                    ctx.matrix.SetPixel(px, py, r, g, b)
+                    canvas.SetPixel(px, py, r, g, b)
 
         offset = (offset + 0.15 * speed) % rings
         hue_offset = (hue_offset + 2) % 360
+        ctx.end_frame()
         ctx.sleep(0.02)

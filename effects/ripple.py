@@ -44,6 +44,7 @@ def ripple(ctx, duration=8, frequency=5, auto_drops=True, drop_rate=30, check_in
 
         # Render
         bg_r, bg_g, bg_b = hsv_to_rgb(210, 0.5, 0.16)
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 height = water[y][x]
@@ -51,9 +52,10 @@ def ripple(ctx, duration=8, frequency=5, auto_drops=True, drop_rate=30, check_in
                     v = min(1.0, (100 + height) / 255)
                     s = max(0.0, 1.0 - height / 200)
                     r, g, b = hsv_to_rgb(210, s, v)
-                    ctx.matrix.SetPixel(x, y, r, g, b)
+                    canvas.SetPixel(x, y, r, g, b)
                 else:
-                    ctx.matrix.SetPixel(x, y, bg_r, bg_g, bg_b)
+                    canvas.SetPixel(x, y, bg_r, bg_g, bg_b)
 
         frame += 1
+        ctx.end_frame()
         ctx.sleep(0.03)

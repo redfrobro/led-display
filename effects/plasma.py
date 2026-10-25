@@ -16,6 +16,7 @@ def plasma(ctx, duration=8, frequency=5, speed=1.0, check_interrupt=None, **kwar
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 value = fast_sin(x + t * 8) + fast_sin(y + t * 4)
@@ -23,6 +24,7 @@ def plasma(ctx, duration=8, frequency=5, speed=1.0, check_interrupt=None, **kwar
                 hue = int(value * 45 + t * 50) % 360
                 v = 0.6 + 0.4 * (value + 4) / 8
                 r, g, b = hsv_to_rgb(hue, 1.0, v)
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
         t += 0.15 * speed
+        ctx.end_frame()
         ctx.sleep(0.02)

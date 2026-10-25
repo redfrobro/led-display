@@ -23,7 +23,7 @@ def rain(ctx, duration=8, frequency=5, intensity=50, splash_size=3, check_interr
         if ctx.check_interrupt():
             return
 
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Spawn new drops
         while len(drops) < max_drops:
@@ -43,7 +43,7 @@ def rain(ctx, duration=8, frequency=5, intensity=50, splash_size=3, check_interr
                 if 0 <= dy < ctx.rows:
                     intensity_val = int(150 * (1 - i / drop['length']))
                     r, g, b = hsv_to_rgb(240, 0.5, intensity_val / 255)
-                    ctx.matrix.SetPixel(int(drop['x']), dy, r, g, b)
+                    canvas.SetPixel(int(drop['x']), dy, r, g, b)
 
             drop['y'] += drop['speed']
 
@@ -76,8 +76,9 @@ def rain(ctx, duration=8, frequency=5, intensity=50, splash_size=3, check_interr
                     if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
                         intensity_val = int(200 * splash['life'])
                         r, g, b = hsv_to_rgb(240, 0.5, intensity_val / 255)
-                        ctx.matrix.SetPixel(px, py, r, g, b)
+                        canvas.SetPixel(px, py, r, g, b)
                 new_splashes.append(splash)
 
         splashes = new_splashes
+        ctx.end_frame()
         ctx.sleep(0.03)

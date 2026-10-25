@@ -21,7 +21,7 @@ def comet(ctx, duration=8, frequency=5, trail=25, speed=0.15, check_interrupt=No
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Calculate comet position (elliptical orbit)
         cx = ctx.cols // 2 + int(fast_sin(angle) * (ctx.cols // 3))
@@ -37,7 +37,7 @@ def comet(ctx, duration=8, frequency=5, trail=25, speed=0.15, check_interrupt=No
             brightness = (i + 1) / len(trail_points)
             r, g, b = hsv_to_rgb(th, 1.0, brightness * 0.8)
             if 0 <= tx < ctx.cols and 0 <= ty < ctx.rows:
-                ctx.matrix.SetPixel(tx, ty, r, g, b)
+                canvas.SetPixel(tx, ty, r, g, b)
 
         # Draw comet head (brighter, larger)
         for dy in range(-1, 2):
@@ -45,8 +45,9 @@ def comet(ctx, duration=8, frequency=5, trail=25, speed=0.15, check_interrupt=No
                 px, py = cx + dx, cy + dy
                 if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
                     r, g, b = hsv_to_rgb(hue, 0.5, 1.0)
-                    ctx.matrix.SetPixel(px, py, r, g, b)
+                    canvas.SetPixel(px, py, r, g, b)
 
         angle += speed
         hue = (hue + 2) % 360
+        ctx.end_frame()
         ctx.sleep(0.03)

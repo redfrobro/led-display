@@ -34,6 +34,7 @@ def swirl(ctx, duration=8, frequency=5, vortices=2, speed=1.0, check_interrupt=N
         if ctx.check_interrupt():
             return
 
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 total_r, total_g, total_b = 0, 0, 0
@@ -59,7 +60,7 @@ def swirl(ctx, duration=8, frequency=5, vortices=2, speed=1.0, check_interrupt=N
                         total_g += g
                         total_b += b
 
-                ctx.matrix.SetPixel(x, y, min(255, int(total_r)), min(255, int(total_g)), min(255, int(total_b)))
+                canvas.SetPixel(x, y, min(255, int(total_r)), min(255, int(total_g)), min(255, int(total_b)))
 
         # Update vortex rotations
         for vortex in vortex_params:
@@ -67,4 +68,5 @@ def swirl(ctx, duration=8, frequency=5, vortices=2, speed=1.0, check_interrupt=N
             vortex['hue'] = (vortex['hue'] + 1) % 360
 
         t += 0.1
+        ctx.end_frame()
         ctx.sleep(0.025)

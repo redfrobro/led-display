@@ -4,7 +4,7 @@ import time
 import os
 import logging
 
-from .base import effect
+from .base import effect, get_frame_canvas
 from .utils import hsv_to_rgb
 
 logger = logging.getLogger('led-demos')
@@ -73,9 +73,6 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
     r, g, b = hsv_to_rgb(color_hue, 1.0, 1.0)
     text_color = graphics.Color(r, g, b)
 
-    # Create a canvas for drawing
-    canvas = ctx.matrix.CreateFrameCanvas()
-
     # Helper function to draw text with tight spacing (1 pixel between characters)
     def draw_text_tight(canvas, font, x, y, color, text_str):
         """Draw text with 1 pixel spacing between characters, returns total width drawn"""
@@ -92,7 +89,8 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
     # Helper to measure text width with tight spacing (without drawing)
     def measure_text_tight(font, text_str):
         """Measure text width with 1 pixel spacing between characters"""
-        temp_canvas = ctx.matrix.CreateFrameCanvas()
+        # Draws in black on the off-screen canvas, which begin_frame() clears anyway
+        temp_canvas = get_frame_canvas(ctx.matrix)
         total_width = 0
         spacing_reduce = 1
         for i, char in enumerate(text_str):
@@ -103,17 +101,15 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
                 total_width += char_width
         return total_width
 
-    # Frame canvases carry their own brightness, so copy the matrix's before drawing
-    def hold_static(canvas, draw):
+    # Frame canvases carry their own brightness (begin_frame copies it), so redraw when it changes
+    def hold_static(draw):
         """Show a static frame until interrupted or timed out, redrawing when brightness changes"""
         drawn_brightness = None
         while True:
             if ctx.matrix.brightness != drawn_brightness:
                 drawn_brightness = ctx.matrix.brightness
-                canvas.Clear()
-                canvas.brightness = drawn_brightness
-                draw(canvas)
-                canvas = ctx.matrix.SwapOnVSync(canvas)
+                draw(ctx.begin_frame())
+                ctx.end_frame()
             if ctx.check_interrupt():
                 return
             if duration > 0 and time.time() - start_time >= duration:
@@ -151,13 +147,12 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
                     return
                 if duration > 0 and time.time() - start_time >= duration:
                     return
-                canvas.Clear()
-                canvas.brightness = ctx.matrix.brightness
+                canvas = ctx.begin_frame()
                 for i, (line, lw) in enumerate(zip(lines, line_widths)):
                     x_pos = ctx.cols - scroll_offset
                     y_pos = start_y + i * line_spacing
                     draw_text_tight(canvas, font, x_pos, y_pos, text_color, line)
-                canvas = ctx.matrix.SwapOnVSync(canvas)
+                ctx.end_frame()
                 scroll_offset += scroll_speed * 0.05
                 if scroll_offset > total_scroll_width:
                     scroll_offset = 0
@@ -169,7 +164,7 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
                     x_pos = max(0, (ctx.cols - lw) // 2)
                     y_pos = start_y + i * line_spacing
                     draw_text_tight(c, font, x_pos, y_pos, text_color, line)
-            hold_static(canvas, draw)
+            hold_static(draw)
     else:
         # Single-line mode
         text_width = measure_text_tight(font, lines[0])
@@ -184,15 +179,14 @@ def text_display(ctx, duration=0, frequency=5, text=None, font_name='5x8.bdf',
                     return
                 if duration > 0 and time.time() - start_time >= duration:
                     return
-                canvas.Clear()
-                canvas.brightness = ctx.matrix.brightness
+                canvas = ctx.begin_frame()
                 x_pos = ctx.cols - scroll_offset
                 draw_text_tight(canvas, font, x_pos, y_pos, text_color, lines[0])
-                canvas = ctx.matrix.SwapOnVSync(canvas)
+                ctx.end_frame()
                 scroll_offset += scroll_speed * 0.05
                 if scroll_offset > total_scroll_width:
                     scroll_offset = 0
                 time.sleep(0.05)
         else:
             x_pos = max(0, (ctx.cols - text_width) // 2)
-            hold_static(canvas, lambda c: draw_text_tight(c, font, x_pos, y_pos, text_color, lines[0]))
+            hold_static(lambda c: draw_text_tight(c, font, x_pos, y_pos, text_color, lines[0]))

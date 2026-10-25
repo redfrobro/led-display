@@ -22,6 +22,7 @@ def waves(ctx, duration=8, frequency=5, wave_count=3, speed=1.0, check_interrupt
         if ctx.check_interrupt():
             return
 
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 # Multiple wave layers
@@ -47,7 +48,8 @@ def waves(ctx, duration=8, frequency=5, wave_count=3, speed=1.0, check_interrupt
                 s = max(0.0, 1.0 - max(0.0, wave_height - 0.65) * 2.5 - foam_f * 0.5)
                 v = min(1.0, 0.3 + wave_height * 0.7 + foam_f * 0.2)
                 r, g, b = hsv_to_rgb(hue, s, v)
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
 
         t += 0.1
+        ctx.end_frame()
         ctx.sleep(0.025)

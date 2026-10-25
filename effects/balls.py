@@ -33,14 +33,14 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         for ball in ball_list:
             # Draw trail
             for i, pos in enumerate(ball['trail']):
                 fade = (i + 1) / len(ball['trail']) if ball['trail'] else 1
                 r, g, b = hsv_to_rgb(ball['hue'], 1.0, fade * 0.5)
-                ctx.matrix.SetPixel(int(pos[0]), int(pos[1]), r, g, b)
+                canvas.SetPixel(int(pos[0]), int(pos[1]), r, g, b)
 
             # Draw ball
             br, bg, bb = hsv_to_rgb(ball['hue'], 1.0, 1.0)
@@ -48,7 +48,7 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
                 for dy in range(-size, size + 1):
                     px, py = int(ball['x']) + dx, int(ball['y']) + dy
                     if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
-                        ctx.matrix.SetPixel(px, py, br, bg, bb)
+                        canvas.SetPixel(px, py, br, bg, bb)
 
             # Update trail
             ball['trail'].append((ball['x'], ball['y']))
@@ -67,4 +67,5 @@ def balls(ctx, duration=8, frequency=5, count=5, size=1, trail=10, check_interru
                 ball['vy'] *= -1
                 ball['y'] = max(1, min(ctx.rows - 2, ball['y']))
 
+        ctx.end_frame()
         ctx.sleep(0.05)

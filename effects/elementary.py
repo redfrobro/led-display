@@ -45,12 +45,12 @@ def elementary(ctx, duration=8, rule=110, check_interrupt=None, **kwargs):
         # Reinitialize if row goes dark (e.g. rule 0 or absorbing rules)
         if not any(current):
             rows.clear()
-            ctx.matrix.Clear()
             current = new_seed()
 
         hue_offset = (hue_offset + 3) % 360
 
         # Draw all buffered rows
+        canvas = ctx.begin_frame()
         for y, row in enumerate(rows):
             hue = (y * 360 // ctx.rows + hue_offset) % 360
             for x, state in enumerate(row):
@@ -58,6 +58,7 @@ def elementary(ctx, duration=8, rule=110, check_interrupt=None, **kwargs):
                     r, g, b = hsv_to_rgb(hue, 1.0, 1.0)
                 else:
                     r, g, b = 0, 0, 0
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
 
+        ctx.end_frame()
         ctx.sleep(0.05)

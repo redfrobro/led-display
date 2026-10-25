@@ -32,7 +32,7 @@ def warp(ctx, duration=8, frequency=5, star_count=200, speed=1.0, check_interrup
         if ctx.check_interrupt():
             return
 
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         for star in stars:
             # Calculate position from center
@@ -56,6 +56,7 @@ def warp(ctx, duration=8, frequency=5, star_count=200, speed=1.0, check_interrup
                     brightness = min(1.0, star['dist'] * 2)
                     saturation = max(0, 1 - star['dist'])
                     r, g, b = hsv_to_rgb(star['hue'], saturation, brightness)
-                    ctx.matrix.SetPixel(px, py, r, g, b)
+                    canvas.SetPixel(px, py, r, g, b)
 
+        ctx.end_frame()
         ctx.sleep(0.02)

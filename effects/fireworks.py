@@ -21,7 +21,7 @@ def fireworks(ctx, duration=8, frequency=5, particles=30, gravity=0.1, check_int
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Launch new firework
         if randrange(int(spawn_rate)) == 0:
@@ -50,8 +50,9 @@ def fireworks(ctx, duration=8, frequency=5, particles=30, gravity=0.1, check_int
             if p['life'] > 0 and 0 <= p['x'] < ctx.cols and 0 <= p['y'] < ctx.rows:
                 brightness = p['life'] / 40
                 r, g, b = hsv_to_rgb(p['hue'], 1.0, brightness)
-                ctx.matrix.SetPixel(int(p['x']), int(p['y']), r, g, b)
+                canvas.SetPixel(int(p['x']), int(p['y']), r, g, b)
                 new_particles.append(p)
 
         active_particles = new_particles
+        ctx.end_frame()
         ctx.sleep(0.04)

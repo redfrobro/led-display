@@ -24,6 +24,7 @@ def life(ctx, duration=8, frequency=5, density=30, colorful=True, check_interrup
             return
 
         # Draw current state
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 if grid[y][x]:
@@ -31,9 +32,8 @@ def life(ctx, duration=8, frequency=5, density=30, colorful=True, check_interrup
                         r, g, b = hsv_to_rgb(colors[y][x], 1.0, 1.0)
                     else:
                         r, g, b = 0, 255, 0
-                    ctx.matrix.SetPixel(x, y, r, g, b)
-                else:
-                    ctx.matrix.SetPixel(x, y, 0, 0, 0)
+                    canvas.SetPixel(x, y, r, g, b)
+        ctx.end_frame()
 
         # Compute next generation
         new_grid = [[False] * ctx.cols for _ in range(ctx.rows)]

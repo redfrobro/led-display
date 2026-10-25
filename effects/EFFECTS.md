@@ -81,7 +81,7 @@ def snow(ctx, duration=8, frequency=5, flake_count=50, wind=0.5, check_interrupt
         if ctx.check_interrupt():
             return
 
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
         for flake in flakes:
             flake['y'] += flake['speed']
             flake['x'] += (random() - 0.5) * wind
@@ -92,8 +92,9 @@ def snow(ctx, duration=8, frequency=5, flake_count=50, wind=0.5, check_interrupt
 
             x, y = int(flake['x']), int(flake['y'])
             if 0 <= x < ctx.cols and 0 <= y < ctx.rows:
-                ctx.matrix.SetPixel(x, y, 255, 255, 255)
+                canvas.SetPixel(x, y, 255, 255, 255)
 
+        ctx.end_frame()
         ctx.sleep(0.05)
 ```
 
@@ -150,12 +151,14 @@ The `ctx` parameter passed to effects provides access to:
 
 ### Properties
 
-- `ctx.matrix` - RGBMatrix instance for pixel operations
+- `ctx.matrix` - RGBMatrix instance (the live display; prefer `begin_frame()` for drawing)
 - `ctx.rows` - Display height (default: 32)
 - `ctx.cols` - Display width (default: 64)
 
 ### Methods
 
+- `ctx.begin_frame()` - Returns a cleared off-screen canvas (brightness already set); draw on it with `canvas.SetPixel()`
+- `ctx.end_frame()` - Shows the frame on the next display refresh, all at once (no flicker or tearing)
 - `ctx.check_interrupt()` - Returns True if effect should stop (user command, timeout)
 - `ctx.sleep(seconds)` - Frame delay scaled by the global speed setting (use instead of `time.sleep`)
 - `ctx.hsv_to_rgb(h, s, v)` - Convert HSV to RGB (h: 0-360, s/v: 0-1)
@@ -206,7 +209,8 @@ Add any effect-specific parameters with defaults. These will be passed from:
 
 - Always check `ctx.check_interrupt()` in the main loop
 - Use `ctx.sleep()` for the frame delay so the global speed control works
-- Clear the display when appropriate: `ctx.matrix.Clear()`
+- Draw each frame between `canvas = ctx.begin_frame()` and `ctx.end_frame()`, redrawing every lit pixel (the canvas starts cleared). Only effects that update a few pixels at a time and rely on the rest staying lit (sparkle, lightning) should draw on `ctx.matrix` directly
+- Never call `matrix.CreateFrameCanvas()` in an effect: the library never frees canvases, so use `begin_frame()` (or `get_frame_canvas()` from `effects.base`)
 - Use `ctx.rows` and `ctx.cols` instead of hardcoded dimensions
 - Include a docstring describing the effect
 - Accept `**kwargs` to handle future parameters gracefully

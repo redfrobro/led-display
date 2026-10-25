@@ -29,6 +29,7 @@ def brains(ctx, duration=8, density=20, check_interrupt=None, **kwargs):
             return
 
         # Draw current state
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 state = grid[y][x]
@@ -38,7 +39,8 @@ def brains(ctx, duration=8, density=20, check_interrupt=None, **kwargs):
                     r, g, b = hsv_to_rgb(hues[y][x], 0.5, 0.35)
                 else:
                     r, g, b = 0, 0, 0
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
+        ctx.end_frame()
 
         # Compute next generation
         new_grid = [[DEAD] * ctx.cols for _ in range(ctx.rows)]

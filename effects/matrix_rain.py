@@ -28,7 +28,7 @@ def matrix_rain(ctx, duration=8, frequency=5, speed=1.0, length=10, check_interr
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         for drop in drops:
             for i in range(drop['length']):
@@ -36,10 +36,10 @@ def matrix_rain(ctx, duration=8, frequency=5, speed=1.0, length=10, check_interr
                 if 0 <= y < ctx.rows:
                     if i == 0:
                         r, g, b = hsv_to_rgb(120, 1.0, 1.0)
-                        ctx.matrix.SetPixel(drop['x'], y, min(255, r + 200), min(255, g + 200), min(255, b + 200))
+                        canvas.SetPixel(drop['x'], y, min(255, r + 200), min(255, g + 200), min(255, b + 200))
                     else:
                         r, g, b = hsv_to_rgb(120, 1.0, 1 - i / drop['length'])
-                        ctx.matrix.SetPixel(drop['x'], y, r, g, b)
+                        canvas.SetPixel(drop['x'], y, r, g, b)
 
             drop['y'] += drop['speed'] * speed
             if drop['y'] - drop['length'] > ctx.rows:
@@ -50,4 +50,5 @@ def matrix_rain(ctx, duration=8, frequency=5, speed=1.0, length=10, check_interr
         if randrange(spawn_rate) == 0 and len(drops) < ctx.cols:
             drops.append({'x': randrange(ctx.cols), 'y': randrange(-10, 0), 'speed': randrange(1, 4), 'length': randrange(min_len, max_len)})
 
+        ctx.end_frame()
         ctx.sleep(0.05)

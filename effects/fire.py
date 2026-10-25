@@ -39,6 +39,7 @@ def fire(ctx, duration=8, frequency=5, intensity=4, cooling=3, check_interrupt=N
                 heat[0][x] = min(255, heat[0][x] + randrange(160, 255))
 
         # Render: black -> red -> orange -> yellow -> white
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 h = heat[ctx.rows - 1 - y][x]
@@ -48,6 +49,7 @@ def fire(ctx, duration=8, frequency=5, intensity=4, cooling=3, check_interrupt=N
                     r, g, b = hsv_to_rgb((h - 64) / 64 * 60, 1.0, 1.0)
                 else:
                     r, g, b = hsv_to_rgb(60, max(0.0, 1.0 - (h - 128) / 128), 1.0)
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
 
+        ctx.end_frame()
         ctx.sleep(0.05)

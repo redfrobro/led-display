@@ -26,11 +26,13 @@ def cyclic(ctx, duration=8, states=16, threshold=1, check_interrupt=None, **kwar
             return
 
         # Draw current state
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 hue = int(grid[y][x] * 360 / states)
                 r, g, b = hsv_to_rgb(hue, 1.0, 1.0)
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
+        ctx.end_frame()
 
         # Compute next generation
         new_grid = [[0] * ctx.cols for _ in range(ctx.rows)]

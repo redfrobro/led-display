@@ -19,12 +19,14 @@ def spiral(ctx, duration=8, frequency=5, speed=5.0, density=10, check_interrupt=
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 hue = (ANGLE_TABLE[y][x] + int(DIST_TABLE[y][x] * density) + hue_offset) % 360
                 v = 0.6 + 0.4 * (0.5 + 0.5 * math.sin(math.radians(hue)))
                 r, g, b = hsv_to_rgb(hue, 1.0, v)
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
 
         hue_offset += speed
+        ctx.end_frame()
         ctx.sleep(0.02)

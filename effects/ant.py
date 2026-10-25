@@ -53,16 +53,18 @@ def ant(ctx, duration=8, num_ants=4, check_interrupt=None, **kwargs):
             a['hue'] = (a['hue'] + 1) % 360
 
         # Draw trail
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 if grid[y][x]:
                     r, g, b = hsv_to_rgb(hues[y][x], 1.0, 0.8)
                 else:
                     r, g, b = 0, 0, 0
-                ctx.matrix.SetPixel(x, y, r, g, b)
+                canvas.SetPixel(x, y, r, g, b)
 
         # Draw ants as bright white dots on top
         for a in ants:
-            ctx.matrix.SetPixel(a['x'], a['y'], 255, 255, 255)
+            canvas.SetPixel(a['x'], a['y'], 255, 255, 255)
 
+        ctx.end_frame()
         ctx.sleep(0.01)

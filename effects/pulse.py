@@ -27,7 +27,7 @@ def pulse(ctx, duration=8, frequency=5, sources=3, speed=1.0, check_interrupt=No
         if ctx.check_interrupt():
             return
 
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Create new pulses periodically
         spawn_rate = max(5, 20 - frequency * 2)
@@ -58,9 +58,10 @@ def pulse(ctx, duration=8, frequency=5, sources=3, speed=1.0, check_interrupt=No
                     px = int(pulse_obj['x'] + pulse_obj['radius'] * math.cos(angle))
                     py = int(pulse_obj['y'] + pulse_obj['radius'] * math.sin(angle))
                     if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
-                        ctx.matrix.SetPixel(px, py, r, g, b)
+                        canvas.SetPixel(px, py, r, g, b)
                 new_pulses.append(pulse_obj)
 
         pulses = new_pulses
         frame += 1
+        ctx.end_frame()
         ctx.sleep(0.03)

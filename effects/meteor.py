@@ -23,7 +23,7 @@ def meteor(ctx, duration=8, frequency=5, length=12, speed=1.0, check_interrupt=N
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Spawn new meteors
         if randrange(int(spawn_rate)) == 0:
@@ -44,7 +44,7 @@ def meteor(ctx, duration=8, frequency=5, length=12, speed=1.0, check_interrupt=N
                 if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
                     brightness = 1.0 - (i / m['length'])
                     r, g, b = hsv_to_rgb(m['hue'], 0.7, brightness)
-                    ctx.matrix.SetPixel(px, py, r, g, b)
+                    canvas.SetPixel(px, py, r, g, b)
 
             m['x'] -= m['speed'] * 0.5 * speed
             m['y'] += m['speed'] * speed
@@ -53,4 +53,5 @@ def meteor(ctx, duration=8, frequency=5, length=12, speed=1.0, check_interrupt=N
                 new_meteors.append(m)
 
         meteors = new_meteors
+        ctx.end_frame()
         ctx.sleep(0.04)

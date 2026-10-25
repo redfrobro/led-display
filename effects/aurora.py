@@ -25,6 +25,7 @@ def aurora(ctx, duration=8, frequency=5, bands=5, speed=1.0, check_interrupt=Non
         if ctx.check_interrupt():
             return
 
+        canvas = ctx.begin_frame()
         for y in range(ctx.rows):
             for x in range(ctx.cols):
                 total_r, total_g, total_b = 0, 0, 0
@@ -52,7 +53,8 @@ def aurora(ctx, duration=8, frequency=5, bands=5, speed=1.0, check_interrupt=Non
                         total_g += g
                         total_b += b
 
-                ctx.matrix.SetPixel(x, y, min(255, int(total_r)), min(255, int(total_g)), min(255, int(total_b)))
+                canvas.SetPixel(x, y, min(255, int(total_r)), min(255, int(total_g)), min(255, int(total_b)))
 
         t += 0.08
+        ctx.end_frame()
         ctx.sleep(0.025)

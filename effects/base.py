@@ -17,6 +17,18 @@ EFFECTS_REGISTRY = {}
 
 VALID_CATEGORIES = ('low_power', 'high_power', 'night', 'special')
 
+# The library never frees canvases from CreateFrameCanvas, so keep one per matrix
+_frame_canvases = {}
+
+
+def get_frame_canvas(matrix):
+    """Return this matrix's reusable off-screen canvas, creating it on first use"""
+    canvas = _frame_canvases.get(id(matrix))
+    if canvas is None:
+        canvas = matrix.CreateFrameCanvas()
+        _frame_canvases[id(matrix)] = canvas
+    return canvas
+
 
 def effect(key, name, category=None, **options):
     """Decorator to register an effect with metadata.
@@ -131,6 +143,25 @@ class EffectContext:
         if self._check_interrupt is not None:
             return self._check_interrupt()
         return False
+
+    def begin_frame(self):
+        """Start a frame: return a cleared off-screen canvas to draw on.
+
+        Draw with canvas.SetPixel(), then call end_frame() to show the whole
+        frame at once (no flicker or tearing). Every pixel must be redrawn each
+        frame; effects that only update changed pixels should draw on ctx.matrix.
+        """
+        canvas = get_frame_canvas(self._matrix)
+        canvas.Clear()
+        # Canvases carry their own brightness; follow the live setting
+        canvas.brightness = self._matrix.brightness
+        return canvas
+
+    def end_frame(self):
+        """Show the frame drawn since begin_frame() on the next display refresh."""
+        canvas = get_frame_canvas(self._matrix)
+        # SwapOnVSync returns the previously shown canvas for drawing the next frame
+        _frame_canvases[id(self._matrix)] = self._matrix.SwapOnVSync(canvas)
 
     def sleep(self, seconds):
         """Sleep for one frame, scaled by the global speed (2.0 = half the delay).

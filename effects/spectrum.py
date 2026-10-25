@@ -28,7 +28,7 @@ def spectrum(ctx, duration=8, frequency=5, bars=16, reactive=True, check_interru
         if ctx.check_interrupt():
             return
 
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Generate simulated audio data
         if frame % 3 == 0:
@@ -70,13 +70,14 @@ def spectrum(ctx, duration=8, frequency=5, bars=16, reactive=True, check_interru
                         else:
                             hue = 0  # Red
                         r, g, b = hsv_to_rgb(hue, 1.0, 0.9)
-                        ctx.matrix.SetPixel(x, y, r, g, b)
+                        canvas.SetPixel(x, y, r, g, b)
 
             # Draw peak indicator
             peak_y = ctx.rows - 1 - int(peaks[i])
             if 0 <= peak_y < ctx.rows:
                 for x in range(x_start, min(x_start + bar_width - 1, ctx.cols)):
-                    ctx.matrix.SetPixel(x, peak_y, 255, 255, 255)
+                    canvas.SetPixel(x, peak_y, 255, 255, 255)
 
         frame += 1
+        ctx.end_frame()
         ctx.sleep(0.03)

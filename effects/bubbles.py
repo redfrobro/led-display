@@ -22,7 +22,7 @@ def bubbles(ctx, duration=8, frequency=5, size=2, wobble=2, check_interrupt=None
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         # Spawn new bubbles
         if randrange(spawn_rate) == 0:
@@ -49,7 +49,7 @@ def bubbles(ctx, duration=8, frequency=5, size=2, wobble=2, check_interrupt=None
                         if 0 <= px < ctx.cols and 0 <= py < ctx.rows:
                             edge = 1.0 if dx*dx + dy*dy < bub['size']*bub['size']*0.5 else 0.6
                             r, g, b = hsv_to_rgb(bub['hue'], 0.5, edge)
-                            ctx.matrix.SetPixel(px, py, r, g, b)
+                            canvas.SetPixel(px, py, r, g, b)
 
             bub['y'] -= bub['speed']
             bub['hue'] = (bub['hue'] + 1) % 360
@@ -58,4 +58,5 @@ def bubbles(ctx, duration=8, frequency=5, size=2, wobble=2, check_interrupt=None
                 new_bubbles.append(bub)
 
         bubble_list = new_bubbles
+        ctx.end_frame()
         ctx.sleep(0.04)

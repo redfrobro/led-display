@@ -27,7 +27,7 @@ def starfield(ctx, duration=8, frequency=5, count=100, speed=0.02, check_interru
     while time.time() - start_time < duration:
         if ctx.check_interrupt():
             return
-        ctx.matrix.Clear()
+        canvas = ctx.begin_frame()
 
         for star in stars:
             star['z'] -= speed
@@ -50,6 +50,7 @@ def starfield(ctx, duration=8, frequency=5, count=100, speed=0.02, check_interru
                 for dx in range(sz):
                     for dy in range(sz):
                         if 0 <= px+dx < ctx.cols and 0 <= py+dy < ctx.rows:
-                            ctx.matrix.SetPixel(px+dx, py+dy, r, g, b)
+                            canvas.SetPixel(px+dx, py+dy, r, g, b)
 
+        ctx.end_frame()
         ctx.sleep(0.03)
