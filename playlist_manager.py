@@ -75,17 +75,23 @@ def load_playlist(name: str) -> dict:
     return data
 
 
-def save_playlist(name: str, data: dict):
+def save_playlist(name: str, data: dict, allow_builtin: bool = False):
     """Save playlist to JSON file with atomic writes and file locking
 
     Args:
         name: Playlist name (without .json extension)
         data: Playlist data dictionary
+        allow_builtin: Only refresh_builtin_playlists() may write built-in playlists
 
     Raises:
-        ValueError: If data is invalid
+        ValueError: If data is invalid, or name is a built-in playlist
         OSError: If file write fails
     """
+    # Built-ins are regenerated from code, so edits to them would be lost
+    if name in BUILTIN_PLAYLISTS and not allow_builtin:
+        raise ValueError(f"Built-in playlist '{name}' is read-only; clone it first: "
+                         f"bin/led-playlist clone {name} my-{name}")
+
     ensure_playlists_dir()
 
     # Validate before saving
@@ -324,10 +330,11 @@ def create_playlist(name: str, description: str = "") -> dict:
     }
 
 
-def migrate_builtin_playlists():
-    """Create built-in playlists from hardcoded effect lists in demos.py
+def refresh_builtin_playlists():
+    """Create or update the built-in playlists from the effect lists in effects/
 
-    This should be called once on first startup to populate the playlists directory.
+    Only writes a playlist when its description or effects changed, so unchanged
+    files (and their timestamps) are left alone.
     """
     ensure_playlists_dir()
 
@@ -336,7 +343,6 @@ def migrate_builtin_playlists():
     except ImportError:
         raise ImportError("Cannot import effect lists from effects module")
 
-    # Define built-in playlists — always regenerated so new effects are picked up
     builtin_configs = [
         ('low-power', f'Pi Zero optimized effects ({len(LOW_POWER_ORDER)} effects)', LOW_POWER_ORDER),
         ('high-power', f'Pi 3/4 high-performance effects ({len(HIGH_POWER_ORDER)} effects)', HIGH_POWER_ORDER),
@@ -345,20 +351,23 @@ def migrate_builtin_playlists():
     ]
 
     for name, description, effect_list in builtin_configs:
-        # Create playlist
         playlist = create_playlist(name, description)
+        # duration 0 = use the global duration (settings.toml / --duration)
+        playlist['effects'] = [{'key': key, 'duration': 0, 'params': {}, 'options': {}}
+                               for key in effect_list]
 
-        # Add effects with default parameters
-        for effect_key in effect_list:
-            playlist['effects'].append({
-                'key': effect_key,
-                'duration': 8,  # Default duration
-                'params': {},   # Use global params
-                'options': {}   # Use default options
-            })
+        try:
+            existing = load_playlist(name)
+        except (FileNotFoundError, ValueError, json.JSONDecodeError):
+            existing = None
 
-        # Save playlist
-        save_playlist(name, playlist)
+        if existing is not None:
+            if (existing.get('description') == playlist['description']
+                    and existing.get('effects') == playlist['effects']):
+                continue
+            playlist['created'] = existing.get('created', playlist['created'])
+
+        save_playlist(name, playlist, allow_builtin=True)
 
 
 def get_effect_from_playlist(playlist_data: dict, effect_key: str) -> Optional[dict]:

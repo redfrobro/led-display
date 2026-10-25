@@ -569,6 +569,7 @@ async function loadPlaylists() {
             const option = document.createElement('option');
             option.value = p.name;
             option.textContent = p.name + ' (' + p.effect_count + ' effects)';
+            option.dataset.builtin = p.is_builtin ? 'true' : 'false';
             select.appendChild(option);
         });
     } catch (error) {
@@ -598,6 +599,11 @@ async function showPlaylistEditor() {
     const name = document.getElementById('playlist-select').value;
     if (!name) {
         showMessage('Select a playlist first', 'error');
+        return;
+    }
+    const selected = document.getElementById('playlist-select').selectedOptions[0];
+    if (selected && selected.dataset.builtin === 'true') {
+        showMessage('Built-in playlists are read-only. Create a new playlist instead.', 'error');
         return;
     }
 

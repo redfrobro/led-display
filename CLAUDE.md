@@ -229,7 +229,7 @@ bin/led-control current_playlist
 
 ### Built-in Playlists
 
-The following playlists are automatically created on first run:
+The following playlists are generated from the effect lists in `effects/` at every startup (rewritten only when the list changes). They are read-only and not tracked by git; every effect uses the global duration (`--duration` / `settings.toml`). To customise one, clone it: `bin/led-playlist clone night my-night`.
 - **low-power** - Pi Zero optimized effects (12 effects)
 - **high-power** - Pi 3/4 high-performance effects (10 effects)
 - **night** - Dark effects suitable for nighttime (8 effects)
@@ -242,7 +242,7 @@ The web interface provides playlist management:
 - View currently loaded playlist
 - Create new playlists
 - Edit playlist: add/remove effects, adjust per-effect parameters
-- Delete custom playlists (built-in playlists cannot be deleted)
+- Delete custom playlists (built-in playlists cannot be edited or deleted)
 
 ### Playlist File Format
 

@@ -20,6 +20,11 @@ env/
 *.log
 # Saved text effect settings
 text_config.json
+# Built-in playlists (regenerated from effects/ at startup)
+playlists/low-power.json
+playlists/high-power.json
+playlists/night.json
+playlists/all.json
 # Web UI password hash (bin/led-web-password)
 web_password
 web_password.tmp

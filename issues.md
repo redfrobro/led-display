@@ -40,7 +40,8 @@ Web server runs as root on `0.0.0.0:80` with no auth.
 
 ## Smaller code issues
 
-- [ ] **#14** Built-in playlists are regenerated every start (`playlist_manager.py:306`): web UI edits to them are lost, tracked JSON files get dirtied with new timestamps each run, and duration 8 is hardcoded instead of read from `settings.toml`.
+- [x] **#14** Built-in playlists are regenerated every start (`playlist_manager.py:306`): web UI edits to them are lost, tracked JSON files get dirtied with new timestamps each run, and duration 8 is hardcoded instead of read from `settings.toml`.
+  - Fixed: `refresh_builtin_playlists()` only writes a built-in when its description or effects changed, keeping `created`. Entries use duration 0 (global duration), so `--duration`/`settings.toml` now apply to `--low-power` etc. (the hardcoded 8 overrode them). Built-ins are read-only: `save_playlist` refuses them with a "clone it first" hint (web PUT/POST → 400, socket and CLI show the error), and the web editor won't open them. The four files are untracked and gitignored. On the Pi, run `git checkout playlists/` before pulling.
 - [ ] **#15** Mood presets are only registered when `demos.py` is imported (`demos.py:41`). In `bin/led-playlist` and the standalone web server, any playlist with a mood fails validation (`playlist_manager.py:172`).
 - [ ] **#16** Category order is hardcoded (`effects/__init__.py:84-92`), so new effects don't appear in `--low-power`/`all`, contradicting EFFECTS.md.
 - [ ] **#17** Most effects `Clear()` + `SetPixel` on the live matrix each frame (flicker/tearing). `text.py` already uses `CreateFrameCanvas`/`SwapOnVSync`.

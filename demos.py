@@ -1238,10 +1238,10 @@ if __name__ == "__main__":
         EFFECT_OPTIONS.update(parse_effect_opts(args.opts))
         logger.debug(f"Custom effect options: {EFFECT_OPTIONS}")
 
-    # Ensure playlists directory exists and regenerate built-in playlists
+    # Ensure playlists directory exists and bring built-in playlists up to date
     import playlist_manager
     playlist_manager.ensure_playlists_dir()
-    playlist_manager.migrate_builtin_playlists()
+    playlist_manager.refresh_builtin_playlists()
 
     # Determine which effects to run
     loaded_playlist_name = None
